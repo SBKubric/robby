@@ -151,13 +151,33 @@ button{cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
+<style>
+.kind{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--muted);font-weight:500;white-space:nowrap}
+.kind.conn{background:var(--accent-soft);color:var(--accent)}
+.slot{display:flex;flex-direction:column;gap:8px}
+.slot-h{display:flex;align-items:baseline;gap:8px}
+.slot-h .sect{padding:0}
+.picked{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.picked .top{display:flex;align-items:center;gap:10px}
+.picked .top .txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.picked .ap{font-size:12px;color:var(--muted)}
+.addbtn{border:1px dashed var(--line);border-radius:14px;padding:12px;background:transparent;color:var(--accent);font-weight:500;text-align:left}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{border:1px solid var(--line);border-radius:16px;padding:14px;background:transparent;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:92px}
+.tile b{font-weight:500}
+.item.soon{opacity:.5;cursor:default}
+.soonb{font-size:11px;border-radius:6px;padding:1px 6px;background:var(--surface2);color:var(--muted)}
+.apcard dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0;font-size:13px}
+.apcard dt{color:var(--muted)}
+.apcard dd{margin:0;min-width:0}
+</style>
 <div class="wrap">
   <section class="intro">
-    <div class="eyebrow">Прототип · одноразовый · данные примерные</div>
-    <h1>Как должны выглядеть экраны Robby?</h1>
-    <p>Четыре экрана: список сценариев, редактор сценария, настройка Telegram-коннектора и состояние телефона-сервера. Три варианта расходятся в структуре, а не в цветах. Кнопки работают, всё хранится в памяти и сбрасывается при перезагрузке страницы.</p>
+    <div class="eyebrow">Прототип · итерация 2 · данные примерные</div>
+    <h1>Как выбирать триггеры, условия и действия из апплетов?</h1>
+    <p>Основа — вариант A первой итерации: форма «Когда / Если / То». Главный экран — пульт из варианта C. Вместо «Подключений» теперь вкладка «Апплеты». Триггеры, условия и действия приходят только из апплетов: редактор их не знает и показывает то, что есть в каталоге.</p>
     <div class="vcard" id="vdesc"></div>
-    <p class="note">Попробуйте в каждом варианте: открыть сценарий и вставить переменную, нажать «Тест», создать новый сценарий, переподключить Telegram, отключить оптимизацию батареи. Ссылка «Сымитировать поломку» в разделе состояния показывает, как выглядит сломанный коннектор. Переключение: плашка внизу или клавиши ← →.</p>
+    <p class="note">Попробуйте: открыть «Пропущенный звонок» и добавить условие из «Батареи»; создать сценарий; заглянуть в «Апплеты». Пункты с пометкой v0.2 видны в каталоге, но выбрать их пока нельзя. Ссылка «Сымитировать поломку» на пульте показывает сломанный коннектор. Переключение вариантов — плашка внизу или ← →.</p>
   </section>
   <div class="phone" id="phone" aria-label="Экран телефона-сервера"></div>
 </div>
@@ -169,37 +189,57 @@ button{cursor:pointer}
 
 <script>
 const VARIANTS={
-  a:{name:'Вкладки',points:['Нижняя навигация: Сценарии · Журнал · Подключения · Телефон','Редактор — одна форма из блоков «Когда / Если / То»','Telegram настраивается отдельным мастером из трёх шагов']},
-  b:{name:'Фраза',points:['Один главный экран: полоса здоровья сверху, сценарии как предложения','Редактор — фраза с подсвеченными словами; нажатие открывает панель снизу','Журнал и состояние — панели поверх главного экрана']},
-  c:{name:'Пульт',points:['Главный экран — состояние телефона-сервера и лента срабатываний','Сценарии — второй экран; редактор — мастер «один вопрос на экран»','Telegram настраивается прямо в карточке коннектора на пульте']},
+  a:{name:'Каталог списком',points:['«+ Условие» открывает панель со всеми условиями, сгруппированными по апплетам','Один экран выбора: всё видно сразу, удобно, пока апплетов немного']},
+  b:{name:'Сначала апплет',points:['«+ Условие» открывает плитки апплетов, у которых есть условия','Нажатие на плитку показывает только условия этого апплета: масштабируется на десятки апплетов']},
 };
 const KEYS=Object.keys(VARIANTS);
 
-const TRIG={
-  sms_in:{app:'SMS',label:'Входящее SMS',short:'приходит SMS',vars:['sms.sender','sms.text'],filters:[{k:'from',l:'Отправитель',ph:'любой'},{k:'text',l:'Текст содержит',ph:'любой текст'}]},
-  call_missed:{app:'Звонок',label:'Пропущенный звонок',short:'пропущен звонок',vars:['call.number','call.contact'],filters:[{k:'who',l:'Номер или контакт',ph:'любой'}]},
-  call_in:{app:'Звонок',label:'Входящий звонок',short:'идёт входящий звонок',vars:['call.number','call.contact'],filters:[{k:'who',l:'Номер или контакт',ph:'любой'}]},
-  bat_low:{app:'Батарея',label:'Уровень ниже порога',short:'батарея опускается ниже',vars:['battery.level','battery.temperature'],filters:[{k:'lvl',l:'Порог, %',ph:'20'}]},
-  bat_unplug:{app:'Батарея',label:'Зарядка отключена',short:'отключается зарядка',vars:['battery.level'],filters:[]},
-  sys_time:{app:'Система',label:'По расписанию',short:'наступает время',vars:[],filters:[{k:'when',l:'Когда',ph:'ежедневно 09:00'}]},
-  sys_boot:{app:'Система',label:'Телефон-сервер включился',short:'телефон-сервер включился',vars:[],filters:[]},
-};
+/* ---- каталог апплетов: единственное место, где описаны триггеры, условия и действия ---- */
+const P=(k,l,def,extra)=>Object.assign({k,l,def:def??''},extra||{});
+const APPLETS=[
+  {id:'system',name:'Система',kind:'Встроенный',
+    triggers:[{id:'schedule',l:'По расписанию',params:[P('when','Когда','ежедневно 09:00')],vars:[]},{id:'boot',l:'Телефон-сервер включился',params:[],vars:[]}],
+    conds:[{id:'days',l:'Дни недели',params:[P('v','Дни','Пн–Пт')]},{id:'window',l:'Окно времени',params:[P('v','Время','09:00–18:00')]}],
+    actions:[{id:'notify',l:'Уведомление на телефоне-сервере',params:[P('title','Заголовок',''),P('text','Текст','',{tpl:true})]}]},
+  {id:'battery',name:'Батарея',kind:'Встроенный',
+    triggers:[{id:'below',l:'Уровень ниже порога',params:[P('lvl','Порог, %','20')],vars:['battery.level','battery.temperature']},{id:'above',l:'Уровень выше порога',params:[P('lvl','Порог, %','90')],vars:['battery.level']},{id:'unplug',l:'Зарядка отключена',params:[],vars:['battery.level']},{id:'plug',l:'Зарядка подключена',params:[],vars:['battery.level']},{id:'hot',l:'Перегрев',params:[P('t','Порог, °C','45')],vars:['battery.temperature']}],
+    conds:[{id:'level',l:'Уровень выше',params:[P('lvl','Порог, %','15')]},{id:'charging',l:'На зарядке',params:[]}],
+    actions:[]},
+  {id:'sms',name:'SMS',kind:'Встроенный',
+    triggers:[{id:'in',l:'Входящее SMS',params:[P('from','Отправитель',''),P('text','Текст содержит','')],vars:['sms.sender','sms.text']}],
+    conds:[],
+    actions:[{id:'send',l:'Отправить SMS',soon:true,params:[]}]},
+  {id:'call',name:'Звонок',kind:'Встроенный',
+    triggers:[{id:'in',l:'Входящий звонок',params:[P('who','Номер или контакт','')],vars:['call.number','call.contact']},{id:'missed',l:'Пропущенный звонок',params:[P('who','Номер или контакт','')],vars:['call.number','call.contact']}],
+    conds:[{id:'active',l:'Идёт звонок',params:[]}],
+    actions:[]},
+  {id:'telegram',name:'Telegram',kind:'Коннектор',connector:true,
+    triggers:[],conds:[],
+    actions:[{id:'send',l:'Отправить сообщение в группу',params:[P('text','Текст','',{tpl:true})]}]},
+  {id:'module',name:'Внешний модуль',kind:'Внешний модуль · v0.2',
+    triggers:[{id:'up',l:'Модуль подключён',soon:true,params:[],vars:[]},{id:'down',l:'Модуль отключён',soon:true,params:[],vars:[]}],
+    conds:[{id:'up',l:'Модуль подключён',soon:true,params:[]}],
+    actions:[{id:'bridge',l:'Мост в офис',soon:true,params:[]}]},
+];
+const KIND={trigger:{key:'triggers',one:'триггер',acc:'триггер',many:'триггеры'},cond:{key:'conds',one:'условие',acc:'условие',many:'условия'},action:{key:'actions',one:'действие',acc:'действие',many:'действия'}};
 const COMMON=['now','device'];
-const CONDS=[{id:'days',l:'Дни недели',def:'Пн–Пт'},{id:'time',l:'Окно времени',def:'09:00–18:00'},{id:'bat',l:'Батарея',def:'выше 15%'},{id:'chg',l:'Зарядка',def:'на зарядке'}];
 const PAUSES=[0,15,60,240];
+const AP=id=>APPLETS.find(a=>a.id===id);
+const ITEM=(kind,ref)=>AP(ref.a)[KIND[kind].key].find(x=>x.id===ref.id);
+const pick=(kind,a,id)=>{const it=AP(a)[KIND[kind].key].find(x=>x.id===id);return {a,id,p:Object.fromEntries(it.params.map(x=>[x.k,x.def]))}};
 
 const S={
   scen:[
-    {id:1,name:'SMS от банка',on:true,trigger:'sms_in',f:{from:'900',text:''},conds:{},pause:0,actions:[{type:'tg',text:'SMS от {sms.sender}: {sms.text}'}],last:{t:'сегодня 14:02',st:'ok'}},
-    {id:2,name:'Пропущенный звонок',on:true,trigger:'call_missed',f:{who:''},conds:{days:'Пн–Пт',time:'09:00–18:00'},pause:0,actions:[{type:'tg',text:'Пропущенный от {call.contact} ({call.number}) в {now}'}],last:{t:'сегодня 07:48',st:'skip'}},
-    {id:3,name:'Батарея ниже 20%',on:true,trigger:'bat_low',f:{lvl:'20'},conds:{},pause:60,actions:[{type:'tg',text:'{device}: батарея {battery.level}%, проверьте зарядку'}],last:{t:'вчера 22:41',st:'late'}},
-    {id:4,name:'Пульс',on:true,trigger:'sys_time',f:{when:'ежедневно 09:00'},conds:{},pause:0,actions:[{type:'tg',text:'Robby на связи. {device}, {now}'}],last:{t:'сегодня 09:00',st:'ok'}},
-    {id:5,name:'Отключили зарядку',on:false,trigger:'bat_unplug',f:{},conds:{},pause:15,actions:[{type:'note',title:'Зарядка отключена',text:'Батарея {battery.level}%'}],last:null},
+    {id:1,name:'SMS от банка',on:true,trigger:{a:'sms',id:'in',p:{from:'900',text:''}},conds:[],pause:0,actions:[{a:'telegram',id:'send',p:{text:'SMS от {sms.sender}: {sms.text}'}}],last:{t:'сегодня 14:02',st:'ok'}},
+    {id:2,name:'Пропущенный звонок',on:true,trigger:{a:'call',id:'missed',p:{who:''}},conds:[{a:'system',id:'days',p:{v:'Пн–Пт'}},{a:'system',id:'window',p:{v:'09:00–18:00'}}],pause:0,actions:[{a:'telegram',id:'send',p:{text:'Пропущенный от {call.contact} ({call.number}) в {now}'}}],last:{t:'сегодня 07:48',st:'skip'}},
+    {id:3,name:'Батарея ниже 20%',on:true,trigger:{a:'battery',id:'below',p:{lvl:'20'}},conds:[],pause:60,actions:[{a:'telegram',id:'send',p:{text:'{device}: батарея {battery.level}%, проверьте зарядку'}}],last:{t:'вчера 22:41',st:'late'}},
+    {id:4,name:'Пульс',on:true,trigger:{a:'system',id:'schedule',p:{when:'ежедневно 09:00'}},conds:[],pause:0,actions:[{a:'telegram',id:'send',p:{text:'Robby на связи. {device}, {now}'}}],last:{t:'сегодня 09:00',st:'ok'}},
+    {id:5,name:'Отключили зарядку',on:false,trigger:{a:'battery',id:'unplug',p:{}},conds:[],pause:15,actions:[{a:'system',id:'notify',p:{title:'Зарядка отключена',text:'Батарея {battery.level}%'}}],last:null},
   ],
   journal:[
     {day:'Сегодня',t:'14:02',sc:'SMS от банка',st:'ok',m:'Доставлено в «Дом · уведомления»'},
     {day:'Сегодня',t:'09:00',sc:'Пульс',st:'ok',m:'Доставлено в «Дом · уведомления»'},
-    {day:'Сегодня',t:'07:48',sc:'Пропущенный звонок',st:'skip',m:'Пропущено: условие «Пн–Пт, 09:00–18:00» не выполнено'},
+    {day:'Сегодня',t:'07:48',sc:'Пропущенный звонок',st:'skip',m:'Пропущено: условие «Окно времени 09:00–18:00» не выполнено'},
     {day:'Вчера',t:'22:47',sc:'Батарея ниже 20%',st:'skip',m:'Пропущено: пауза 60 мин'},
     {day:'Вчера',t:'22:41',sc:'Батарея ниже 20%',st:'late',m:'Нет сети. Доставлено в 22:58 с пометкой ⏱ 22:41'},
     {day:'Вчера',t:'18:30',sc:'SMS от банка',st:'ok',m:'Доставлено в «Дом · уведомления»'},
@@ -213,286 +253,197 @@ const S={
     {id:'notif',t:'Уведомления',d:'Разрешены',ok:true},
     {id:'lock',t:'Блокировка экрана',d:'Не установлена, после перезагрузки Robby стартует сам',ok:true},
   ],
-  conn:{state:'ok',bot:'@robby_home_bot',group:'Дом · уведомления',chat:'-1002231849107',last:'14:02'},
-  tg:null, nextId:6,
+  conn:{state:'ok',bot:'@robby_home_bot',group:'Дом · уведомления',last:'14:02'},
+  tg:null,nextId:6,
 };
 const ST_LABEL={ok:'доставлено',late:'с опозданием',skip:'пропущено',fail:'ошибка',test:'тест'};
-const UI={a:{view:'home',tab:'list'},b:{view:'home'},c:{view:'home'}};
-let V='a', toastMsg=null, toastTimer=null;
+const UI={a:{view:'home',tab:'pult'},b:{view:'home',tab:'pult'}};
+let V='a',toastMsg=null,toastTimer=null;
 
 const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clone=o=>JSON.parse(JSON.stringify(o));
 const ui=()=>UI[V];
-const problems=()=>S.checks.filter(c=>!c.ok).length+(S.conn.state==='broken'?1:0);
-
-function varsFor(d){return d.trigger?[...TRIG[d.trigger].vars,...COMMON]:COMMON}
-function badVars(d){
-  const ok=new Set(varsFor(d)),bad=new Set();
-  d.actions.forEach(a=>[a.text,a.title].forEach(t=>(t||'').replace(/\{([a-z.]+)\}/g,(m,v)=>{if(!ok.has(v))bad.add(v)})));
-  return [...bad];
-}
-function condText(c){const p=Object.values(c);return p.length?p.join(', '):''}
-function filtText(sc){
-  const t=TRIG[sc.trigger];if(!t)return'';
-  return t.filters.map(f=>sc.f[f.k]?(f.k==='lvl'?sc.f[f.k]+'%':f.k==='from'?'от '+sc.f[f.k]:f.k==='text'?'с текстом «'+sc.f[f.k]+'»':f.k==='who'?'от '+sc.f[f.k]:sc.f[f.k]):'').filter(Boolean).join(' ');
-}
-function actText(a){return a.type==='tg'?'Telegram':'уведомление'}
-function summary(sc){
-  const t=TRIG[sc.trigger];if(!t)return'Триггер не выбран';
-  const c=condText(sc.conds);
-  return t.label+(filtText(sc)?' '+filtText(sc):'')+(c?' · если '+c:'')+' → '+sc.actions.map(actText).join(', ');
-}
-function stBadge(st){return `<span class="st ${st}">${ST_LABEL[st]}</span>`}
-function sw(on,act,id){return `<button class="sw ${on?'on':''}" data-act="${act}" data-id="${id}" role="switch" aria-checked="${on}" aria-label="Включить или выключить"></button>`}
 function toast(m){toastMsg=m;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastMsg=null;render()},2400)}
+const stBadge=st=>`<span class="st ${st}">${ST_LABEL[st]}</span>`;
+const sw=(on,id)=>`<button class="sw ${on?'on':''}" data-act="toggle" data-id="${id}" role="switch" aria-checked="${on}" aria-label="Включить или выключить"></button>`;
 
-/* ---------- shared pieces (allowed to be shared: field widgets, not layouts) ---------- */
-function filterFields(d){
-  const t=TRIG[d.trigger];if(!t||!t.filters.length)return '<p class="muted small">У этого триггера нет фильтров.</p>';
-  return t.filters.map(f=>`<div class="field"><label for="f-${f.k}">${h(f.l)}</label><input id="f-${f.k}" data-bind="f.${f.k}" value="${h(d.f[f.k]||'')}" placeholder="${h(f.ph)}"></div>`).join('');
+/* ---- описание сценария строится из каталога, без знания конкретных апплетов ---- */
+function refText(kind,ref){const it=ITEM(kind,ref);const ps=it.params.filter(x=>!x.tpl&&ref.p[x.k]).map(x=>ref.p[x.k]);return it.l+(ps.length?' '+ps.join(', '):'')}
+function summary(sc){
+  if(!sc.trigger)return'Триггер не выбран';
+  const c=sc.conds.map(r=>refText('cond',r)).join(' и ');
+  return refText('trigger',sc.trigger)+(c?' · если '+c:'')+' → '+sc.actions.map(r=>AP(r.a).name).join(', ');
 }
-function condFields(d){
-  return `<div class="row">${CONDS.map(c=>`<button class="chip ${d.conds[c.id]!==undefined?'on':''}" data-act="cond" data-c="${c.id}">${h(c.l)}</button>`).join('')}</div>`+
-  CONDS.filter(c=>d.conds[c.id]!==undefined).map(c=>`<div class="field"><label for="c-${c.id}">${h(c.l)}</label><input id="c-${c.id}" data-bind="conds.${c.id}" value="${h(d.conds[c.id])}"></div>`).join('');
-}
-function actionField(d,i){
-  const a=d.actions[i];
-  const chips=varsFor(d).map(v=>`<button class="var" data-act="ins" data-i="${i}" data-v="${v}">{${v}}</button>`).join('');
-  const head=a.type==='tg'?`Telegram → «${h(S.conn.group)}»`:'Уведомление на телефоне-сервере';
-  return `<div class="card fill">
-    <div class="row"><b style="font-weight:500">${head}</b><span class="spacer"></span>${d.actions.length>1?`<button class="btn text" data-act="delAct" data-i="${i}">Убрать</button>`:''}</div>
-    ${a.type==='note'?`<div class="field"><label for="at-${i}">Заголовок</label><input id="at-${i}" data-bind="actions.${i}.title" value="${h(a.title||'')}"></div>`:''}
-    <div class="field"><label for="ax-${i}">Текст</label><textarea id="ax-${i}" data-bind="actions.${i}.text" data-ta="${i}" placeholder="Текст сообщения">${h(a.text)}</textarea></div>
-    <div class="row">${chips}</div>
-  </div>`;
-}
-function addActionRow(){return `<div class="row"><button class="btn tonal" data-act="addAct" data-t="tg">+ Telegram</button><button class="btn tonal" data-act="addAct" data-t="note">+ Уведомление</button></div>`}
-function pauseField(d){return `<div class="row">${PAUSES.map(p=>`<button class="chip ${d.pause===p?'on':''}" data-act="pause" data-p="${p}">${p?('раз в '+(p<60?p+' мин':p/60+' ч')):'без паузы'}</button>`).join('')}</div>`}
-function errBox(){const u=ui();return u.err?`<div class="err">${u.err}</div>`:''}
-function journalRows(entries){
-  let day='';return entries.map(e=>{const d=e.day!==day?`<div class="sect">${e.day}</div>`:'';day=e.day;
-    return d+`<div class="item"><div class="txt"><div class="row"><span class="t">${h(e.sc)}</span><span class="spacer"></span><span class="mono muted">${e.t}</span></div><div class="d">${h(e.m)}</div></div>${stBadge(e.st)}</div>`}).join('');
-}
-function checkRows(){
-  return S.checks.map(c=>`<div class="item"><div class="badge" style="${c.ok?'':'background:var(--warn-soft);color:var(--warn)'}">${c.ok?'✓':'!'}</div><div class="txt"><span class="t">${h(c.t)}</span><span class="d">${h(c.d)}</span></div>${!c.ok?`<button class="btn tonal" data-act="fixCheck" data-id="${c.id}">${c.fix}</button>`:''}</div>`).join('');
-}
-function connSummary(){
-  return S.conn.state==='ok'
-   ?`<span class="st ok">работает</span><span class="small muted">${h(S.conn.bot)} → «${h(S.conn.group)}», последнее сообщение в ${S.conn.last}</span>`
-   :`<span class="st fail">сломан</span><span class="small" style="color:var(--bad)">Ошибка 403: бота удалили из группы. Новые срабатывания завершаются ошибкой.</span>`;
-}
-function breakLink(){return S.conn.state==='ok'?`<button class="btn text small" data-act="break" style="align-self:flex-start;padding-left:0">Сымитировать поломку: бота удалили из группы</button>`:''}
-function tgSteps(){
-  const g=S.tg||{token:'',bot:false,checking:false,waiting:false,group:false,tested:false};
-  const n=g.tested?3:g.group?2:g.bot?1:0;
-  const s1=`<div class="card ${g.bot?'fill':''}"><b style="font-weight:500">1. Токен бота</b>
-    <p class="small muted" style="margin:0">Создайте бота у @BotFather и вставьте токен. Токен хранится только на этом телефоне и не попадает в экспорт.</p>
-    <div class="field"><label for="tg-token">Токен</label><input id="tg-token" data-tg="token" value="${h(g.token)}" placeholder="7312345678:AAH…" ${g.bot?'disabled':''}></div>
-    ${g.bot?`<span class="st ok">найден ${h(S.conn.bot)}</span>`:`<button class="btn" data-act="tgCheck" ${g.checking?'disabled':''}>${g.checking?'Проверяю…':'Проверить'}</button>`}</div>`;
-  const s2=g.bot?`<div class="card ${g.group?'fill':''}"><b style="font-weight:500">2. Добавьте бота в группу</b>
-    <p class="small muted" style="margin:0">Откройте ссылку на телефоне с Telegram и выберите группу. Robby сам найдёт её.</p>
-    <div class="mono" style="user-select:all;word-break:break-all">t.me/robby_home_bot?startgroup=k7f2q</div>
-    ${g.group?`<span class="st ok">найдена «${h(S.conn.group)}»</span>`:`<button class="btn" data-act="tgWait" ${g.waiting?'disabled':''}>${g.waiting?'Жду группу…':'Я добавил бота'}</button>`}</div>`:'';
-  const s3=g.group?`<div class="card ${g.tested?'fill':''}"><b style="font-weight:500">3. Тестовое сообщение</b>
-    ${g.tested?`<span class="st ok">доставлено, коннектор работает</span>`:`<button class="btn" data-act="tgTest">Отправить «Robby подключён»</button>`}</div>`:'';
-  return {n,html:s1+s2+s3,done:g.tested};
-}
+function varsFor(d){return d.trigger?[...ITEM('trigger',d.trigger).vars,...COMMON]:COMMON}
+function badVars(d){const ok=new Set(varsFor(d)),bad=new Set();
+  d.actions.forEach(r=>Object.values(r.p).forEach(t=>String(t).replace(/\{([a-z.]+)\}/g,(m,v)=>{if(!ok.has(v))bad.add(v)})));return [...bad]}
 
-/* ---------- Variant A: tabs ---------- */
-function A(){
-  const u=ui();
-  if(u.view==='editor')return A_editor();
-  if(u.view==='telegram')return A_tg();
-  const tabs=[['list','Сценарии','≡'],['journal','Журнал','◷'],['conn','Подключения','⇄'],['phone','Телефон','▣']];
-  let body='',title='';
-  if(u.tab==='list'){title='Сценарии';
-    body=`<div class="content">${S.conn.state==='broken'?`<div class="err">Telegram-коннектор сломан. <button class="btn text" data-act="tab" data-tab="conn" style="padding:0;color:inherit;text-decoration:underline">Подробнее</button></div>`:''}
-    <div class="list">${S.scen.map(sc=>`<div class="item"><button class="txt" data-act="edit" data-id="${sc.id}" style="border:0;background:none;text-align:left;padding:0"><span class="t">${h(sc.name)}</span><span class="d">${h(summary(sc))}</span><span class="d">${sc.last?stBadge(sc.last.st)+' '+sc.last.t:'ещё не срабатывал'}</span></button>${sw(sc.on,'toggle',sc.id)}</div>`).join('')}</div></div>
-    <button class="fab" data-act="edit" data-id="new">+ Сценарий</button>`}
-  if(u.tab==='journal'){title='Журнал';body=`<div class="content"><p class="small muted" style="margin:0">30 дней, не больше 2000 записей. Отсечённые фильтром события сюда не пишутся.</p><div class="list">${journalRows(S.journal)}</div></div>`}
-  if(u.tab==='conn'){title='Подключения';body=`<div class="content"><div class="card"><div class="row"><div class="badge">TG</div><div class="txt" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><b style="font-weight:500">Telegram</b>${connSummary()}</div></div><div class="row"><button class="btn ${S.conn.state==='ok'?'tonal':''}" data-act="tgOpen">${S.conn.state==='ok'?'Настроить заново':'Переподключить'}</button></div></div>${breakLink()}
-    <div class="sect">В v0.2</div><div class="card fill"><div class="row"><div class="badge">E</div><span class="muted">ESP32-устройство — появится в v0.2</span></div></div></div>`}
-  if(u.tab==='phone'){title='Телефон-сервер';body=`<div class="content"><div class="card fill"><div class="row"><span class="big">87%</span><span class="muted">на зарядке · 29 °C</span></div><span class="small muted">Дом-сервер · Android 13</span></div><div class="list">${checkRows()}</div><div class="row"><button class="btn tonal" data-act="noop">Экспорт настроек</button><button class="btn text" data-act="noop">Импорт</button></div></div>`}
-  return `<div class="appbar"><h3>${title}</h3></div><div class="screen">${body}</div>
-   <nav class="bnav">${tabs.map(([k,l,ic])=>`<button class="${u.tab===k?'on':''}" data-act="tab" data-tab="${k}"><span class="ic">${ic}</span>${l}${(k==='conn'&&S.conn.state==='broken')||(k==='phone'&&S.checks.some(c=>!c.ok))?'<span class="dot"></span>':''}</button>`).join('')}</nav>`;
+/* ---- редактор: один и тот же виджет для всех трёх ячеек ---- */
+function paramFields(kind,ref,path){
+  const it=ITEM(kind,ref);if(!it.params.length)return '';
+  return it.params.map(x=>{const id=`${path}-${x.k}`.replace(/\./g,'-');
+    if(x.tpl)return `<div class="field"><label for="${id}">${h(x.l)}</label><textarea id="${id}" data-bind="${path}.p.${x.k}" data-ta="${path}.p.${x.k}" placeholder="Текст с переменными">${h(ref.p[x.k])}</textarea></div><div class="row">${varsFor(ui().draft).map(v=>`<button class="var" data-act="ins" data-path="${path}.p.${x.k}" data-v="${v}">{${v}}</button>`).join('')}</div>`;
+    return `<div class="field"><label for="${id}">${h(x.l)}</label><input id="${id}" data-bind="${path}.p.${x.k}" value="${h(ref.p[x.k])}" placeholder="любой"></div>`}).join('');
 }
-function A_editor(){
-  const d=ui().draft,t=TRIG[d.trigger];
-  const trigOpts=Object.entries(TRIG).map(([k,v])=>`<option value="${k}" ${d.trigger===k?'selected':''}>${v.app}: ${v.label}</option>`).join('');
+function pickedCard(kind,ref,path,removable){
+  const ap=AP(ref.a),it=ITEM(kind,ref);
+  return `<div class="picked"><div class="top"><div class="badge">${h(ap.name.slice(0,2))}</div><div class="txt"><span class="ap">${h(ap.name)}</span><b style="font-weight:500">${h(it.l)}</b></div>
+   ${removable?`<button class="btn text" data-act="rm" data-path="${path}">Убрать</button>`:`<button class="btn text" data-act="open" data-kind="${kind}">Заменить</button>`}</div>${paramFields(kind,ref,path)}</div>`;
+}
+function editor(){
+  const u=ui(),d=u.draft;
   return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>${d.id?'Сценарий':'Новый сценарий'}</h3><button class="btn text" data-act="save">Сохранить</button></div>
   <div class="screen"><div class="content">
-    ${errBox()}
-    <div class="field"><label for="nm">Название</label><input id="nm" data-bind="name" value="${h(d.name)}" placeholder="Например, SMS от банка"></div>
-    <div class="sect">Когда</div>
-    <div class="field"><label for="trg">Триггер</label><select id="trg" data-act-change="setTrig"><option value="">Выберите…</option>${trigOpts}</select></div>
-    ${t?filterFields(d):''}
-    <div class="sect">Если</div>${condFields(d)}
-    <div class="sect">То</div>${d.actions.map((a,i)=>actionField(d,i)).join('')}${addActionRow()}
-    <div class="sect">Пауза</div>${pauseField(d)}
-    <div class="row" style="padding-top:8px"><button class="btn tonal" data-act="test">Тест</button>${d.id?`<span class="spacer"></span><button class="btn text" data-act="del" style="color:var(--bad)">Удалить</button>`:''}</div>
-  </div></div>`;
-}
-function A_tg(){
-  const s=tgSteps();
-  return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>Подключить Telegram</h3></div>
-  <div class="screen"><div class="content"><div class="stepper">${[0,1,2].map(i=>`<span class="${i<=s.n?'on':''}"></span>`).join('')}</div>${s.html}${s.done?`<button class="btn wide" data-act="back">Готово</button>`:''}</div></div>`;
-}
-
-/* ---------- Variant B: phrase ---------- */
-function B(){
-  const u=ui();
-  if(u.view==='editor')return B_editor();
-  const p=problems();
-  const health=`<button class="health ${S.conn.state==='broken'?'bad':p?'warn':''}" data-act="sheet" data-s="status"><span style="font-weight:650">${p?p+' '+(p===1?'проблема':'проблемы'):'Всё работает'}</span><span class="spacer"></span><span class="small">87% · на зарядке ›</span></button>`;
-  const list=S.scen.map(sc=>{const t=TRIG[sc.trigger],a=sc.actions[0],c=condText(sc.conds);
-    return `<button class="scen-b ${sc.on?'':'off'}" data-act="edit" data-id="${sc.id}"><span class="p">Когда <b>${h(t.short)}${filtText(sc)?' '+h(filtText(sc)):''}</b>${c?`, если <b>${h(c)}</b>`:''}, ${a.type==='tg'?'написать в <b>Telegram</b>':'показать <b>уведомление</b>'}${sc.actions.length>1?' и ещё '+(sc.actions.length-1):''}${sc.pause?`, не чаще <b>раза в ${sc.pause<60?sc.pause+' мин':sc.pause/60+' ч'}</b>`:''}.<br><span class="small muted">${h(sc.name)} · ${sc.last?ST_LABEL[sc.last.st]+' '+sc.last.t:'ещё не срабатывал'}</span></span>${sw(sc.on,'toggle',sc.id)}</button>`}).join('');
-  let sheet='';
-  if(u.sheet==='status')sheet=`<h4>Телефон-сервер</h4><div class="card fill"><b style="font-weight:500">Telegram</b>${connSummary()}<div class="row"><button class="btn ${S.conn.state==='ok'?'tonal':''}" data-act="sheet" data-s="tg">${S.conn.state==='ok'?'Настроить заново':'Переподключить'}</button></div></div>${breakLink()}<div class="list">${checkRows()}</div><div class="row"><button class="btn tonal" data-act="noop">Экспорт настроек</button><button class="btn text" data-act="noop">Импорт</button></div>`;
-  if(u.sheet==='journal')sheet=`<h4>Журнал</h4><div class="list">${journalRows(S.journal)}</div>`;
-  if(u.sheet==='tg'){const s=tgSteps();sheet=`<h4>Подключить Telegram</h4>${s.html}${s.done?`<button class="btn wide" data-act="closeSheet">Готово</button>`:''}`}
-  return `<div class="appbar"><h3>Robby</h3><button class="btn text" data-act="sheet" data-s="journal">Журнал</button></div>
-  <div class="screen">${health}<div class="content">${list}</div><button class="fab" data-act="edit" data-id="new">+ Когда…</button></div>${sheet?B_sheet(sheet):''}`;
-}
-function B_sheet(inner){return `<div class="scrim" data-act="closeSheet"></div><div class="sheet"><div class="grab"></div>${inner}</div>`}
-function B_editor(){
-  const u=ui(),d=u.draft,t=TRIG[d.trigger];
-  const tok=(s,label,empty)=>`<button class="tok ${empty?'empty':''}" data-act="sheet" data-s="${s}">${h(label)}</button>`;
-  const ft=t?filtText(d):'';
-  const c=condText(d.conds);
-  const acts=d.actions.map((a,i)=>tok('act'+i,a.type==='tg'?'написать в Telegram «'+(a.text.slice(0,28)||'…')+(a.text.length>28?'…':'')+'»':'показать уведомление «'+(a.title||'…')+'»',!a.text)).join(' и ');
-  const phrase=`Когда ${tok('trig',t?t.short:'что-то происходит',!t)}${t&&t.filters.length?' '+tok('filt',ft||'с любыми параметрами',!ft):''}, ${tok('cond',c?'если '+c:'в любое время',!c)}, ${acts}${' '}${tok('act+','+ ещё действие',true)}, ${tok('pause',d.pause?'не чаще раза в '+(d.pause<60?d.pause+' мин':d.pause/60+' ч'):'без паузы',!d.pause)}.`;
-  let sheet='';const s=u.sheet||'';
-  if(s==='trig')sheet=`<h4>Что должно произойти?</h4>${['SMS','Звонок','Батарея','Система'].map(app=>`<div class="sect">${app}</div><div class="list">${Object.entries(TRIG).filter(([,v])=>v.app===app).map(([k,v])=>`<button class="item" data-act="setTrig" data-t="${k}"><span class="txt"><span class="t">${v.label}</span><span class="d">${v.vars.length?'переменные: '+v.vars.map(x=>'{'+x+'}').join(' '):'без своих переменных'}</span></span>${d.trigger===k?'✓':''}</button>`).join('')}</div>`).join('')}`;
-  if(s==='filt')sheet=`<h4>Уточнить событие</h4>${filterFields(d)}<button class="btn" data-act="closeSheet">Готово</button>`;
-  if(s==='cond')sheet=`<h4>Когда разрешено срабатывать</h4><p class="small muted" style="margin:0">Условия проверяют состояние телефона-сервера в момент события.</p>${condFields(d)}<button class="btn" data-act="closeSheet">Готово</button>`;
-  if(s==='pause')sheet=`<h4>Пауза</h4><p class="small muted" style="margin:0">Повторные срабатывания внутри паузы пропускаются и пишутся в Журнал.</p>${pauseField(d)}<button class="btn" data-act="closeSheet">Готово</button>`;
-  if(s==='act+')sheet=`<h4>Добавить действие</h4>${addActionRow()}`;
-  if(s.startsWith('act')&&s!=='act+'){const i=+s.slice(3);sheet=`<h4>Действие</h4>${actionField(d,i)}<button class="btn" data-act="closeSheet">Готово</button>`}
-  return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>${d.id?h(d.name):'Новый сценарий'}</h3><button class="btn text" data-act="save">Сохранить</button></div>
-  <div class="screen"><div class="content">${errBox()}<p class="phrase">${phrase}</p>
+   ${u.err?`<div class="err">${u.err}</div>`:''}
    <div class="field"><label for="nm">Название</label><input id="nm" data-bind="name" value="${h(d.name)}" placeholder="Например, SMS от банка"></div>
-   <div class="row"><button class="btn tonal" data-act="test">Тест</button>${d.id?`<span class="spacer"></span><button class="btn text" data-act="del" style="color:var(--bad)">Удалить</button>`:''}</div>
-   <p class="small muted" style="margin:0">Нажмите на подсвеченное слово, чтобы изменить его.</p></div></div>${sheet?B_sheet(sheet):''}`;
+   <div class="slot"><div class="slot-h"><span class="sect">Когда</span><span class="small muted">один триггер</span></div>
+    ${d.trigger?pickedCard('trigger',d.trigger,'trigger',false):`<button class="addbtn" data-act="open" data-kind="trigger">+ Выбрать триггер</button>`}</div>
+   <div class="slot"><div class="slot-h"><span class="sect">Если</span><span class="small muted">все условия сразу (И)</span></div>
+    ${d.conds.map((r,i)=>pickedCard('cond',r,'conds.'+i,true)).join('')}<button class="addbtn" data-act="open" data-kind="cond">+ Условие</button></div>
+   <div class="slot"><div class="slot-h"><span class="sect">То</span><span class="small muted">по порядку</span></div>
+    ${d.actions.map((r,i)=>pickedCard('action',r,'actions.'+i,true)).join('')}<button class="addbtn" data-act="open" data-kind="action">+ Действие</button></div>
+   <div class="slot"><span class="sect">Пауза</span><div class="row">${PAUSES.map(p=>`<button class="chip ${d.pause===p?'on':''}" data-act="pause" data-p="${p}">${p?('раз в '+(p<60?p+' мин':p/60+' ч')):'без паузы'}</button>`).join('')}</div></div>
+   <div class="row" style="padding-top:8px"><button class="btn tonal" data-act="test">Тест</button>${d.id?`<span class="spacer"></span><button class="btn text" data-act="del" style="color:var(--bad)">Удалить</button>`:''}</div>
+  </div></div>${picker()}`;
 }
 
-/* ---------- Variant C: console ---------- */
-function C(){
+/* ---- выбор из каталога: здесь и расходятся варианты ---- */
+function itemRow(kind,a,it){
+  return it.soon?`<div class="item soon"><span class="txt"><span class="t">${h(it.l)}</span></span><span class="soonb">v0.2</span></div>`
+   :`<button class="item" data-act="choose" data-kind="${kind}" data-a="${a.id}" data-id="${it.id}"><span class="txt"><span class="t">${h(it.l)}</span>${kind==='trigger'?`<span class="d">${it.vars.length?it.vars.map(v=>'{'+v+'}').join(' '):'без своих переменных'}</span>`:''}</span><span class="muted">›</span></button>`;
+}
+function picker(){
+  const u=ui();if(!u.pick)return '';
+  const kind=u.pick,K=KIND[kind],aps=APPLETS.filter(a=>a[K.key].length);
+  let inner='';
+  if(V==='a'){
+    inner=`<h4>Выберите ${K.acc}</h4>`+aps.map(a=>`<div class="sect">${h(a.name)} ${a.connector?'<span class="kind conn">коннектор</span>':''}</div><div class="list">${a[K.key].map(it=>itemRow(kind,a,it)).join('')}</div>`).join('');
+  }else if(!u.pickAp){
+    inner=`<h4>Какой апплет даст ${K.acc}?</h4><div class="tiles">${aps.map(a=>{const n=a[K.key].filter(x=>!x.soon).length;return `<button class="tile" data-act="pickAp" data-a="${a.id}" ${n?'':'disabled style="opacity:.5"'}><b>${h(a.name)}</b><span class="small muted">${n?n+' '+K.many:'в v0.2'}</span>${a.connector?'<span class="kind conn" style="align-self:flex-start">коннектор</span>':''}</button>`}).join('')}</div>`;
+  }else{
+    const a=AP(u.pickAp);
+    inner=`<div class="row"><button class="icon-btn" data-act="pickAp" data-a="" aria-label="К апплетам">←</button><h4>${h(a.name)}: ${K.many}</h4></div><div class="list">${a[K.key].map(it=>itemRow(kind,a,it)).join('')}</div>`;
+  }
+  return `<div class="scrim" data-act="close"></div><div class="sheet"><div class="grab"></div>${inner}</div>`;
+}
+
+/* ---- вкладки ---- */
+function connSummary(){return S.conn.state==='ok'
+  ?`<span class="st ok">работает</span><span class="small muted">${h(S.conn.bot)} → «${h(S.conn.group)}», последнее сообщение в ${S.conn.last}</span>`
+  :`<span class="st fail">сломан</span><span class="small" style="color:var(--bad)">Ошибка 403: бота удалили из группы. Новые срабатывания завершаются ошибкой.</span>`}
+function checkRows(list){return list.map(c=>`<div class="item"><div class="badge" style="${c.ok?'':'background:var(--warn-soft);color:var(--warn)'}">${c.ok?'✓':'!'}</div><div class="txt"><span class="t">${h(c.t)}</span><span class="d">${h(c.d)}</span></div>${!c.ok?`<button class="btn tonal" data-act="fixCheck" data-id="${c.id}">${c.fix}</button>`:''}</div>`).join('')}
+function pult(){
+  const bad=S.checks.filter(c=>!c.ok);
+  return `<div class="hero-c"><div class="row"><span class="big">87%</span><span class="st ok">на зарядке</span><span class="spacer"></span><span class="small muted">29 °C</span></div><div class="meter"><i style="width:87%"></i></div><div class="small muted">Сервис работает с 05:12 · сегодня ${S.journal.filter(e=>e.day==='Сегодня').length} срабатывания</div></div>
+  <div class="content">
+   ${S.conn.state==='broken'?`<div class="card" style="border-color:var(--bad)"><b style="font-weight:500">Telegram</b>${connSummary()}<button class="btn" data-act="tgOpen" style="align-self:flex-start">Переподключить</button></div>`:''}
+   ${bad.length?`<div class="sect">Требует внимания</div><div class="list">${checkRows(bad)}</div>`:''}
+   <div class="sect">Лента</div>
+   <div class="tl">${S.journal.map(e=>`<div class="e"><span class="time">${e.day==='Сегодня'?e.t:'вч '+e.t}</span><span class="pin ${e.st}"></span><span><b style="font-weight:500">${h(e.sc)}</b><br><span class="small muted">${h(e.m)}</span></span></div>`).join('')}</div>
+   <details class="small"><summary class="muted">Все проверки (${S.checks.filter(c=>c.ok).length} из ${S.checks.length} в порядке)</summary><div class="list">${checkRows(S.checks)}</div></details>
+   ${S.conn.state==='ok'?`<button class="btn text small" data-act="break" style="align-self:flex-start;padding-left:0">Сымитировать поломку: бота удалили из группы</button>`:''}
+   <div class="row"><button class="btn tonal" data-act="noop">Экспорт настроек</button><button class="btn text" data-act="noop">Импорт</button></div>
+  </div>`;
+}
+function scenList(){
+  return `<div class="content"><div class="list">${S.scen.map(sc=>`<div class="item"><button class="txt" data-act="edit" data-id="${sc.id}" style="border:0;background:none;text-align:left;padding:0"><span class="t">${h(sc.name)}</span><span class="d">${h(summary(sc))}</span><span class="d">${sc.last?stBadge(sc.last.st)+' '+sc.last.t:'ещё не срабатывал'}</span></button>${sw(sc.on,sc.id)}</div>`).join('')}</div></div>
+  <button class="fab" data-act="edit" data-id="new">+ Сценарий</button>`;
+}
+function applets(){
+  const list=(xs)=>xs.length?xs.map(x=>h(x.l)+(x.soon?' <span class="soonb">v0.2</span>':'')).join(', '):'<span class="muted">—</span>';
+  return `<div class="content"><p class="small muted" style="margin:0">Всё, что умеют сценарии, приходит из апплетов. Новый апплет появляется здесь и сразу доступен в редакторе.</p>
+  ${APPLETS.map(a=>`<div class="card apcard ${a.kind.includes('v0.2')?'fill':''}"><div class="row"><b style="font-weight:500;font-size:16px">${h(a.name)}</b><span class="spacer"></span><span class="kind ${a.connector?'conn':''}">${h(a.kind)}</span></div>
+   <dl><dt>Триггеры</dt><dd>${list(a.triggers)}</dd><dt>Условия</dt><dd>${list(a.conds)}</dd><dt>Действия</dt><dd>${list(a.actions)}</dd></dl>
+   ${a.connector?`<div style="display:flex;flex-direction:column;gap:6px">${connSummary()}</div><button class="btn ${S.conn.state==='ok'?'tonal':''}" data-act="tgOpen" style="align-self:flex-start">${S.conn.state==='ok'?'Настроить заново':'Переподключить'}</button>`:''}</div>`).join('')}</div>`;
+}
+function tgScreen(){
+  const g=S.tg,n=g.tested?3:g.group?2:g.bot?1:0;
+  const s1=`<div class="card ${g.bot?'fill':''}"><b style="font-weight:500">1. Токен бота</b><p class="small muted" style="margin:0">Создайте бота у @BotFather и вставьте токен. Токен хранится только на этом телефоне и не попадает в экспорт.</p>
+    <div class="field"><label for="tg-token">Токен</label><input id="tg-token" data-tg="token" value="${h(g.token)}" placeholder="7312345678:AAH…" ${g.bot?'disabled':''}></div>
+    ${g.bot?`<span class="st ok">найден ${h(S.conn.bot)}</span>`:`<button class="btn" data-act="tgCheck" ${g.checking?'disabled':''}>${g.checking?'Проверяю…':'Проверить'}</button>`}</div>`;
+  const s2=g.bot?`<div class="card ${g.group?'fill':''}"><b style="font-weight:500">2. Добавьте бота в группу</b><p class="small muted" style="margin:0">Откройте ссылку на телефоне с Telegram и выберите группу. Robby сам найдёт её.</p><div class="mono" style="user-select:all;word-break:break-all">t.me/robby_home_bot?startgroup=k7f2q</div>
+    ${g.group?`<span class="st ok">найдена «${h(S.conn.group)}»</span>`:`<button class="btn" data-act="tgWait" ${g.waiting?'disabled':''}>${g.waiting?'Жду группу…':'Я добавил бота'}</button>`}</div>`:'';
+  const s3=g.group?`<div class="card ${g.tested?'fill':''}"><b style="font-weight:500">3. Тестовое сообщение</b>${g.tested?`<span class="st ok">доставлено, коннектор работает</span>`:`<button class="btn" data-act="tgTest">Отправить «Robby подключён»</button>`}</div>`:'';
+  return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>Telegram</h3></div><div class="screen"><div class="content"><div class="stepper">${[0,1,2].map(i=>`<span class="${i<=n?'on':''}"></span>`).join('')}</div>${s1+s2+s3}${g.tested?`<button class="btn wide" data-act="back">Готово</button>`:''}</div></div>`;
+}
+function app(){
   const u=ui();
-  if(u.view==='editor')return C_editor();
-  if(u.view==='scen')return C_scen();
-  const tgOpen=u.tgOpen;
-  const s=tgOpen?tgSteps():null;
-  const on=S.scen.filter(x=>x.on).length;
-  return `<div class="appbar"><h3>Дом-сервер</h3><button class="btn text" data-act="nav" data-v="scen">Сценарии · ${on}</button></div>
-  <div class="screen">
-   <div class="hero-c"><div class="row"><span class="big">87%</span><span class="st ok">на зарядке</span><span class="spacer"></span><span class="small muted">29 °C</span></div><div class="meter"><i style="width:87%"></i></div>
-    <div class="small muted">Сервис работает с 05:12 · сегодня 3 срабатывания</div></div>
-   <div class="content">
-    <div class="sect">Подключения</div>
-    <div class="card"><div class="row"><div class="badge">TG</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><b style="font-weight:500">Telegram</b>${connSummary()}</div></div>
-     ${tgOpen?s.html+(s.done?`<button class="btn wide" data-act="tgClose">Свернуть</button>`:`<button class="btn text" data-act="tgClose">Отмена</button>`):`<div class="row"><button class="btn ${S.conn.state==='ok'?'tonal':''}" data-act="tgOpen">${S.conn.state==='ok'?'Настроить заново':'Переподключить'}</button></div>`}</div>
-    ${breakLink()}
-    ${S.checks.some(c=>!c.ok)?`<div class="sect">Требует внимания</div><div class="list">${S.checks.filter(c=>!c.ok).map(c=>`<div class="item"><div class="badge" style="background:var(--warn-soft);color:var(--warn)">!</div><div class="txt"><span class="t">${h(c.t)}</span><span class="d">${h(c.d)}</span></div><button class="btn tonal" data-act="fixCheck" data-id="${c.id}">${c.fix}</button></div>`).join('')}</div>`:''}
-    <div class="sect">Лента</div>
-    <div class="tl">${S.journal.map(e=>`<div class="e"><span class="time">${e.day==='Сегодня'?e.t:'вч '+e.t}</span><span class="pin ${e.st}"></span><span><b style="font-weight:500">${h(e.sc)}</b><br><span class="small muted">${h(e.m)}</span></span></div>`).join('')}</div>
-    <details class="small"><summary class="muted">Все проверки (${S.checks.filter(c=>c.ok).length} из ${S.checks.length} в порядке)</summary><div class="list">${checkRows()}</div></details>
-    <div class="row"><button class="btn tonal" data-act="noop">Экспорт настроек</button><button class="btn text" data-act="noop">Импорт</button></div>
-   </div></div>`;
-}
-function C_scen(){
-  return `<div class="appbar"><button class="icon-btn" data-act="nav" data-v="home" aria-label="Назад">←</button><h3>Сценарии</h3></div>
-  <div class="screen"><div class="content"><div class="optgrid">${S.scen.map(sc=>`<div class="card ${sc.on?'':'fill'}" style="gap:8px"><div class="row"><span class="badge">${TRIG[sc.trigger].app.slice(0,3)}</span><span class="spacer"></span>${sw(sc.on,'toggle',sc.id)}</div><button data-act="edit" data-id="${sc.id}" style="border:0;background:none;text-align:left;padding:0;display:flex;flex-direction:column;gap:4px"><b style="font-weight:500">${h(sc.name)}</b><span class="small muted">${sc.last?ST_LABEL[sc.last.st]+', '+sc.last.t:'ещё не срабатывал'}</span></button></div>`).join('')}
-   <button class="card" data-act="edit" data-id="new" style="align-items:center;justify-content:center;color:var(--accent);border-style:dashed;min-height:120px">+ Новый</button></div></div></div>`;
-}
-const C_STEPS=['Что должно произойти?','Уточните событие','Когда разрешено срабатывать?','Что сделать?','Как назвать?'];
-function C_editor(){
-  const u=ui(),d=u.draft,st=u.step||0,t=TRIG[d.trigger];
-  let body='';
-  if(st===0)body=`<div class="optgrid">${Object.entries(TRIG).map(([k,v])=>`<button class="opt ${d.trigger===k?'on':''}" data-act="setTrig" data-t="${k}"><span class="small muted">${v.app}</span><b style="font-weight:500">${v.label}</b></button>`).join('')}</div>`;
-  if(st===1)body=filterFields(d);
-  if(st===2)body=`<p class="small muted" style="margin:0">Можно ничего не выбирать: тогда сценарий срабатывает всегда.</p>${condFields(d)}`;
-  if(st===3)body=d.actions.map((a,i)=>actionField(d,i)).join('')+addActionRow();
-  if(st===4)body=`<div class="field"><label for="nm">Название</label><input id="nm" data-bind="name" value="${h(d.name)}" placeholder="Например, SMS от банка"></div><div class="sect">Пауза</div>${pauseField(d)}<div class="card fill"><span class="small muted">Итог</span><span>${h(summary(d))}</span></div><button class="btn tonal" data-act="test">Тест</button>`;
-  const last=st===C_STEPS.length-1;
-  return `<div class="appbar"><button class="icon-btn" data-act="${st?'step':'back'}" data-d="-1" aria-label="Назад">←</button><h3 class="small" style="font-size:15px;color:var(--muted)">Шаг ${st+1} из ${C_STEPS.length}</h3>${d.id?`<button class="btn text" data-act="save">Сохранить</button>`:''}</div>
-  <div class="screen"><div class="content"><div class="stepper">${C_STEPS.map((_,i)=>`<span class="${i<=st?'on':''}"></span>`).join('')}</div>${errBox()}<p class="q">${C_STEPS[st]}</p>${body}
-   <div class="row" style="padding-top:8px"><span class="spacer"></span>${last?`<button class="btn" data-act="save">Сохранить</button>`:`<button class="btn" data-act="step" data-d="1" ${st===0&&!t?'disabled':''}>Далее</button>`}</div></div></div>`;
+  if(u.view==='editor')return editor();
+  if(u.view==='telegram')return tgScreen();
+  const tabs=[['pult','Пульт','◉'],['scen','Сценарии','≡'],['applets','Апплеты','⊞']];
+  const title={pult:'Дом-сервер',scen:'Сценарии',applets:'Апплеты'}[u.tab];
+  const body={pult,scen:scenList,applets}[u.tab]();
+  const dot=k=>(k==='pult'&&(S.checks.some(c=>!c.ok)||S.conn.state==='broken'))||(k==='applets'&&S.conn.state==='broken');
+  return `<div class="appbar"><h3>${title}</h3></div><div class="screen">${body}</div>
+   <nav class="bnav" style="grid-template-columns:repeat(3,1fr)">${tabs.map(([k,l,ic])=>`<button class="${u.tab===k?'on':''}" data-act="tab" data-tab="${k}"><span class="ic">${ic}</span>${l}${dot(k)?'<span class="dot"></span>':''}</button>`).join('')}</nav>`;
 }
 
-/* ---------- render & actions ---------- */
+/* ---- render & actions ---- */
 function render(){
   const ph=document.getElementById('phone');
-  const scroll=ph.querySelector('.screen')?.scrollTop||0, sheetScroll=ph.querySelector('.sheet')?.scrollTop||0;
-  ph.innerHTML=`<div class="sbar"><span>14:05</span><span>Wi-Fi · 87%</span></div>`+({a:A,b:B,c:C}[V])()+(toastMsg?`<div class="toast" role="status">${h(toastMsg)}</div>`:'');
-  const sc=ph.querySelector('.screen');if(sc)sc.scrollTop=scroll;const sh=ph.querySelector('.sheet');if(sh)sh.scrollTop=sheetScroll;
+  const sc=ph.querySelector('.screen')?.scrollTop||0,sh=ph.querySelector('.sheet')?.scrollTop||0;
+  ph.innerHTML=`<div class="sbar"><span>14:05</span><span>Wi-Fi · 87%</span></div>`+app()+(toastMsg?`<div class="toast" role="status">${h(toastMsg)}</div>`:'');
+  const s1=ph.querySelector('.screen');if(s1)s1.scrollTop=sc;const s2=ph.querySelector('.sheet');if(s2)s2.scrollTop=sh;
   const v=VARIANTS[V];
-  document.getElementById('vdesc').innerHTML=`<span class="eyebrow">Вариант ${V.toUpperCase()}</span><h2>${v.name}</h2><ul>${v.points.map(p=>`<li>${p}</li>`).join('')}</ul>`;
+  document.getElementById('vdesc').innerHTML=`<span class="eyebrow">Вариант ${V.toUpperCase()} · выбор из каталога</span><h2>${v.name}</h2><ul>${v.points.map(p=>`<li>${p}</li>`).join('')}</ul>`;
   document.getElementById('swlbl').textContent=`${V.toUpperCase()} · ${v.name}`;
 }
-function go(view,extra){Object.assign(ui(),{view,sheet:null,err:null},extra||{});}
-function setPath(obj,path,val){const ks=path.split('.');let o=obj;ks.slice(0,-1).forEach(k=>o=o[k]);o[ks[ks.length-1]]=val}
-function setTrig(k){const d=ui().draft;d.trigger=k||null;d.f={};}
-function act(a,ds,el){
+function getPath(o,p){return p.split('.').reduce((x,k)=>x[k],o)}
+function setAt(o,p,val){const ks=p.split('.');const last=ks.pop();let x=o;ks.forEach(k=>x=x[k]);x[last]=val}
+function go(view,extra){Object.assign(ui(),{view,pick:null,pickAp:null,err:null},extra||{})}
+function act(a,ds){
   const u=ui(),d=u.draft;
   switch(a){
     case 'tab':u.tab=ds.tab;break;
-    case 'nav':go(ds.v);break;
     case 'toggle':{const sc=S.scen.find(x=>x.id==ds.id);sc.on=!sc.on;toast(sc.on?'Сценарий включён':'Сценарий выключен, отложенные срабатывания отменены');break}
-    case 'edit':{const sc=ds.id==='new'?{id:null,name:'',on:true,trigger:null,f:{},conds:{},pause:0,actions:[{type:'tg',text:''}],last:null}:clone(S.scen.find(x=>x.id==ds.id));go('editor',{draft:sc,step:0,from:u.view});break}
-    case 'back':go(u.from&&u.from!=='editor'?u.from:'home');break;
-    case 'setTrig':setTrig(ds.t);u.err=null;if(V==='b')u.sheet=null;if(V==='c')u.step=TRIG[ds.t].filters.length?1:2;break;
-    case 'cond':{if(d.conds[ds.c]!==undefined)delete d.conds[ds.c];else d.conds[ds.c]=CONDS.find(c=>c.id===ds.c).def;break}
-    case 'addAct':d.actions.push(ds.t==='tg'?{type:'tg',text:''}:{type:'note',title:'',text:''});if(V==='b')u.sheet='act'+(d.actions.length-1);break;
-    case 'delAct':d.actions.splice(+ds.i,1);if(V==='b')u.sheet=null;break;
-    case 'ins':{const i=+ds.i,ta=document.querySelector(`[data-ta="${i}"]`),tok='{'+ds.v+'}',a0=d.actions[i];
-      const pos=ta?ta.selectionStart:a0.text.length,end=ta?ta.selectionEnd:pos;a0.text=a0.text.slice(0,pos)+tok+a0.text.slice(end);render();
-      const t2=document.querySelector(`[data-ta="${i}"]`);if(t2){t2.focus();t2.selectionStart=t2.selectionEnd=pos+tok.length}return}
+    case 'edit':{const sc=ds.id==='new'?{id:null,name:'',on:true,trigger:null,conds:[],pause:0,actions:[],last:null}:clone(S.scen.find(x=>x.id==ds.id));go('editor',{draft:sc});break}
+    case 'back':go('home');break;
+    case 'open':u.pick=ds.kind;u.pickAp=null;break;
+    case 'close':u.pick=null;u.pickAp=null;break;
+    case 'pickAp':u.pickAp=ds.a||null;break;
+    case 'choose':{const r=pick(ds.kind,ds.a,ds.id);if(ds.kind==='trigger')d.trigger=r;else if(ds.kind==='cond')d.conds.push(r);else d.actions.push(r);u.pick=null;u.pickAp=null;u.err=null;break}
+    case 'rm':{const [k,i]=ds.path.split('.');d[k].splice(+i,1);break}
+    case 'ins':{const ta=document.querySelector(`[data-ta="${ds.path}"]`),tok='{'+ds.v+'}',cur=String(getPath(d,ds.path)??'');
+      const used=ta&&FOCUSED.has(ds.path),pos=used?ta.selectionStart:cur.length,end=used?ta.selectionEnd:pos;setAt(d,ds.path,cur.slice(0,pos)+tok+cur.slice(end));render();
+      const t2=document.querySelector(`[data-ta="${ds.path}"]`);if(t2){t2.focus();t2.selectionStart=t2.selectionEnd=pos+tok.length}return}
     case 'pause':d.pause=+ds.p;break;
-    case 'step':{const n=(u.step||0)+(+ds.d);if(V==='c'&&ds.d==='1'&&u.step===0&&d.trigger&&!TRIG[d.trigger].filters.length){u.step=2}else if(V==='c'&&ds.d==='-1'&&u.step===2&&d.trigger&&!TRIG[d.trigger].filters.length){u.step=0}else u.step=Math.max(0,Math.min(C_STEPS.length-1,n));break}
     case 'save':case 'test':{
-      if(!d.trigger){u.err='Выберите триггер: без него сценарий не знает, когда срабатывать.';if(V==='c')u.step=0;break}
+      if(!d.trigger){u.err='Выберите триггер: без него сценарий не знает, когда срабатывать.';break}
+      if(!d.actions.length){u.err='Добавьте хотя бы одно действие.';break}
       const bad=badVars(d);
-      if(bad.length){u.err=`Переменная ${bad.map(v=>'<span class="mono">{'+h(v)+'}</span>').join(', ')} недоступна для триггера «${h(TRIG[d.trigger].label)}». Уберите её или выберите другой триггер.`;if(V==='c')u.step=3;break}
-      if(d.actions.some(x=>!x.text.trim())){u.err='У действия пустой текст.';if(V==='c')u.step=3;break}
+      if(bad.length){u.err=`Переменная ${bad.map(v=>'<span class="mono">{'+h(v)+'}</span>').join(', ')} недоступна для триггера «${h(ITEM('trigger',d.trigger).l)}». Уберите её или выберите другой триггер.`;break}
+      if(d.actions.some(r=>ITEM('action',r).params.some(x=>x.tpl&&!String(r.p[x.k]).trim()))){u.err='У действия пустой текст.';break}
       u.err=null;
-      if(a==='test'){const fail=S.conn.state==='broken'&&d.actions.some(x=>x.type==='tg');
-        S.journal.unshift({day:'Сегодня',t:'14:05',sc:(d.name||'Новый сценарий'),st:fail?'fail':'test',m:fail?'Тест: ошибка 403, бота удалили из группы':'Тест с примерными значениями: доставлено'});
-        toast(fail?'Тест не прошёл: коннектор сломан':'Тест отправлен в «'+S.conn.group+'»');break}
-      if(!d.name.trim())d.name=TRIG[d.trigger].label;
-      if(d.id){const i=S.scen.findIndex(x=>x.id===d.id);S.scen[i]=clone(d)}else{d.id=S.nextId++;S.scen.push(clone(d))}
-      toast('Сценарий сохранён');go(V==='c'?'scen':'home');break}
-    case 'del':S.scen=S.scen.filter(x=>x.id!==d.id);toast('Сценарий удалён');go(V==='c'?'scen':'home');break;
-    case 'sheet':u.sheet=ds.s;if(ds.s==='tg')S.tg={token:'',bot:false,group:false,tested:false};break;
-    case 'closeSheet':u.sheet=null;break;
-    case 'tgOpen':S.tg={token:'',bot:false,group:false,tested:false};if(V==='a')go('telegram',{from:'home'});if(V==='c')u.tgOpen=true;break;
-    case 'tgClose':u.tgOpen=false;break;
+      if(a==='test'){const fail=S.conn.state==='broken'&&d.actions.some(r=>AP(r.a).connector);
+        S.journal.unshift({day:'Сегодня',t:'14:05',sc:d.name||'Новый сценарий',st:fail?'fail':'test',m:fail?'Тест: ошибка 403, бота удалили из группы':'Тест с примерными значениями: доставлено'});
+        toast(fail?'Тест не прошёл: коннектор сломан':'Тест выполнен, запись в ленте');break}
+      if(!d.name.trim())d.name=ITEM('trigger',d.trigger).l;
+      if(d.id){S.scen[S.scen.findIndex(x=>x.id===d.id)]=clone(d)}else{d.id=S.nextId++;S.scen.push(clone(d))}
+      toast('Сценарий сохранён');go('home',{tab:'scen'});break}
+    case 'del':S.scen=S.scen.filter(x=>x.id!==d.id);toast('Сценарий удалён');go('home',{tab:'scen'});break;
+    case 'tgOpen':S.tg={token:'',bot:false,group:false,tested:false};go('telegram');break;
     case 'tgCheck':if((S.tg.token||'').length<8){toast('Вставьте токен целиком: он выглядит как 7312345678:AAH…');break}S.tg.checking=true;setTimeout(()=>{S.tg.checking=false;S.tg.bot=true;render()},700);break;
     case 'tgWait':S.tg.waiting=true;setTimeout(()=>{S.tg.waiting=false;S.tg.group=true;render()},1400);break;
-    case 'tgTest':S.tg.tested=true;S.conn.state='ok';S.conn.last='14:05';S.journal.unshift({day:'Сегодня',t:'14:05',sc:'Telegram-коннектор',st:'test',m:'«Robby подключён» доставлено'});break;
+    case 'tgTest':S.tg.tested=true;S.conn.state='ok';S.conn.last='14:05';S.journal.unshift({day:'Сегодня',t:'14:05',sc:'Telegram',st:'test',m:'«Robby подключён» доставлено'});break;
     case 'break':S.conn.state='broken';S.journal.unshift({day:'Сегодня',t:'14:04',sc:'SMS от банка',st:'fail',m:'Ошибка 403: бота удалили из группы. Остальные действия пропущены'});toast('Коннектор сломан: на телефоне висит постоянное уведомление');break;
-    case 'fixCheck':{const c=S.checks.find(x=>x.id===ds.id);c.ok=true;c.d='Отключена';toast('Открыты бы системные настройки; считаем, что отключили');break}
+    case 'fixCheck':{const c=S.checks.find(x=>x.id===ds.id);c.ok=true;c.d='Отключена';toast('Открылись бы системные настройки; считаем, что отключили');break}
     case 'noop':toast('Откроется системный выбор файла (в прототипе не работает)');break;
   }
   render();
 }
 document.addEventListener('click',e=>{
   const s=e.target.closest('[data-sw]');if(s){cycle(+s.dataset.sw);return}
-  const el=e.target.closest('[data-act]');if(!el||!el.closest('#phone'))return;
-  if(el.tagName==='SELECT')return;
-  act(el.dataset.act,el.dataset,el);
+  const el=e.target.closest('[data-act]');if(!el||!el.closest('#phone')||el.disabled)return;
+  act(el.dataset.act,el.dataset);
 });
-document.addEventListener('change',e=>{const el=e.target;if(el.dataset.actChange==='setTrig'){setTrig(el.value);ui().err=null;render()}});
-document.addEventListener('input',e=>{
-  const el=e.target;
-  if(el.dataset.bind){setPath(ui().draft,el.dataset.bind,el.value)}
-  if(el.dataset.tg){S.tg[el.dataset.tg]=el.value}
+const FOCUSED=new Set();document.addEventListener('focusin',e=>{if(e.target.dataset&&e.target.dataset.ta)FOCUSED.add(e.target.dataset.ta)});
+document.addEventListener('input',e=>{const el=e.target;
+  if(el.dataset.bind)setAt(ui().draft,el.dataset.bind,el.value);
+  if(el.dataset.tg)S.tg[el.dataset.tg]=el.value;
 });
 function cycle(dir){const i=(KEYS.indexOf(V)+dir+KEYS.length)%KEYS.length;location.hash=KEYS[i]}
 function fromHash(){const k=(location.hash||'').slice(1);V=KEYS.includes(k)?k:'a';render()}
 window.addEventListener('hashchange',fromHash);
-document.addEventListener('keydown',e=>{
-  if(e.target.closest('input,textarea,select,[contenteditable]'))return;
-  if(e.key==='ArrowLeft')cycle(-1);if(e.key==='ArrowRight')cycle(1);
-});
+document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,select,[contenteditable]'))return;if(e.key==='ArrowLeft')cycle(-1);if(e.key==='ArrowRight')cycle(1)});
 fromHash();
 </script>

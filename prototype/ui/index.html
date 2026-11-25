@@ -175,9 +175,9 @@ button{cursor:pointer}
   <section class="intro">
     <div class="eyebrow">Прототип · итерация 2 · данные примерные</div>
     <h1>Как выбирать триггеры, условия и действия из апплетов?</h1>
-    <p>Основа — вариант A первой итерации: форма «Когда / Если / То». Главный экран — пульт из варианта C. Вместо «Подключений» теперь вкладка «Апплеты». Триггеры, условия и действия приходят только из апплетов: редактор их не знает и показывает то, что есть в каталоге.</p>
+    <p>Основа — вариант A первой итерации: форма «Когда / Если / То». Главный экран — пульт из варианта C. Вкладок две: «Пульт» и «Сценарии». На пульте кнопка «Активные апплеты» ведёт только к апплетам, которым нужна настройка (коннекторы, внешний модуль). Триггеры, условия и действия приходят только из апплетов: редактор их не знает и показывает то, что есть в каталоге.</p>
     <div class="vcard" id="vdesc"></div>
-    <p class="note">Попробуйте: открыть «Пропущенный звонок» и добавить условие из «Батареи»; создать сценарий; заглянуть в «Апплеты». Пункты с пометкой v0.2 видны в каталоге, но выбрать их пока нельзя. Ссылка «Сымитировать поломку» на пульте показывает сломанный коннектор. Переключение вариантов — плашка внизу или ← →.</p>
+    <p class="note">Попробуйте: открыть «Пропущенный звонок» и добавить условие из «Батареи»; создать сценарий; открыть «Активные апплеты» на пульте. Пункты с пометкой v0.2 видны в каталоге, но выбрать их пока нельзя. Ссылка «Сымитировать поломку» на пульте показывает сломанный коннектор. Переключение вариантов — плашка внизу или ← →.</p>
   </section>
   <div class="phone" id="phone" aria-label="Экран телефона-сервера"></div>
 </div>
@@ -216,7 +216,7 @@ const APPLETS=[
   {id:'telegram',name:'Telegram',kind:'Коннектор',connector:true,
     triggers:[],conds:[],
     actions:[{id:'send',l:'Отправить сообщение в группу',params:[P('text','Текст','',{tpl:true})]}]},
-  {id:'module',name:'Внешний модуль',kind:'Внешний модуль · v0.2',
+  {id:'module',name:'Внешний модуль',kind:'Внешний модуль · v0.2',setup:true,
     triggers:[{id:'up',l:'Модуль подключён',soon:true,params:[],vars:[]},{id:'down',l:'Модуль отключён',soon:true,params:[],vars:[]}],
     conds:[{id:'up',l:'Модуль подключён',soon:true,params:[]}],
     actions:[{id:'bridge',l:'Мост в офис',soon:true,params:[]}]},
@@ -336,6 +336,7 @@ function pult(){
   const bad=S.checks.filter(c=>!c.ok);
   return `<div class="hero-c"><div class="row"><span class="big">87%</span><span class="st ok">на зарядке</span><span class="spacer"></span><span class="small muted">29 °C</span></div><div class="meter"><i style="width:87%"></i></div><div class="small muted">Сервис работает с 05:12 · сегодня ${S.journal.filter(e=>e.day==='Сегодня').length} срабатывания</div></div>
   <div class="content">
+   <button class="card" data-act="nav" data-v="applets" style="text-align:left;flex-direction:row;align-items:center"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">Активные апплеты</b><span class="small muted">Telegram ${S.conn.state==='ok'?'работает':'сломан'} · внешний модуль в v0.2</span></span><span class="muted">›</span></button>
    ${S.conn.state==='broken'?`<div class="card" style="border-color:var(--bad)"><b style="font-weight:500">Telegram</b>${connSummary()}<button class="btn" data-act="tgOpen" style="align-self:flex-start">Переподключить</button></div>`:''}
    ${bad.length?`<div class="sect">Требует внимания</div><div class="list">${checkRows(bad)}</div>`:''}
    <div class="sect">Лента</div>
@@ -351,8 +352,8 @@ function scenList(){
 }
 function applets(){
   const list=(xs)=>xs.length?xs.map(x=>h(x.l)+(x.soon?' <span class="soonb">v0.2</span>':'')).join(', '):'<span class="muted">—</span>';
-  return `<div class="content"><p class="small muted" style="margin:0">Всё, что умеют сценарии, приходит из апплетов. Новый апплет появляется здесь и сразу доступен в редакторе.</p>
-  ${APPLETS.map(a=>`<div class="card apcard ${a.kind.includes('v0.2')?'fill':''}"><div class="row"><b style="font-weight:500;font-size:16px">${h(a.name)}</b><span class="spacer"></span><span class="kind ${a.connector?'conn':''}">${h(a.kind)}</span></div>
+  return `<div class="content"><p class="small muted" style="margin:0">Здесь только апплеты, которым нужна настройка: коннекторы и внешний модуль. Остальные работают без настройки и видны в редакторе, когда вы выбираете триггер, условие или действие.</p>
+  ${APPLETS.filter(a=>a.connector||a.setup).map(a=>`<div class="card apcard ${a.kind.includes('v0.2')?'fill':''}"><div class="row"><b style="font-weight:500;font-size:16px">${h(a.name)}</b><span class="spacer"></span><span class="kind ${a.connector?'conn':''}">${h(a.kind)}</span></div>
    <dl><dt>Триггеры</dt><dd>${list(a.triggers)}</dd><dt>Условия</dt><dd>${list(a.conds)}</dd><dt>Действия</dt><dd>${list(a.actions)}</dd></dl>
    ${a.connector?`<div style="display:flex;flex-direction:column;gap:6px">${connSummary()}</div><button class="btn ${S.conn.state==='ok'?'tonal':''}" data-act="tgOpen" style="align-self:flex-start">${S.conn.state==='ok'?'Настроить заново':'Переподключить'}</button>`:''}</div>`).join('')}</div>`;
 }
@@ -370,12 +371,13 @@ function app(){
   const u=ui();
   if(u.view==='editor')return editor();
   if(u.view==='telegram')return tgScreen();
-  const tabs=[['pult','Пульт','◉'],['scen','Сценарии','≡'],['applets','Апплеты','⊞']];
-  const title={pult:'Дом-сервер',scen:'Сценарии',applets:'Апплеты'}[u.tab];
-  const body={pult,scen:scenList,applets}[u.tab]();
-  const dot=k=>(k==='pult'&&(S.checks.some(c=>!c.ok)||S.conn.state==='broken'))||(k==='applets'&&S.conn.state==='broken');
+  if(u.view==='applets')return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>Активные апплеты</h3></div><div class="screen">${applets()}</div>`;
+  const tabs=[['pult','Пульт','◉'],['scen','Сценарии','≡']];
+  const title={pult:'Дом-сервер',scen:'Сценарии'}[u.tab];
+  const body={pult,scen:scenList}[u.tab]();
+  const dot=k=>k==='pult'&&(S.checks.some(c=>!c.ok)||S.conn.state==='broken');
   return `<div class="appbar"><h3>${title}</h3></div><div class="screen">${body}</div>
-   <nav class="bnav" style="grid-template-columns:repeat(3,1fr)">${tabs.map(([k,l,ic])=>`<button class="${u.tab===k?'on':''}" data-act="tab" data-tab="${k}"><span class="ic">${ic}</span>${l}${dot(k)?'<span class="dot"></span>':''}</button>`).join('')}</nav>`;
+   <nav class="bnav" style="grid-template-columns:repeat(2,1fr)">${tabs.map(([k,l,ic])=>`<button class="${u.tab===k?'on':''}" data-act="tab" data-tab="${k}"><span class="ic">${ic}</span>${l}${dot(k)?'<span class="dot"></span>':''}</button>`).join('')}</nav>`;
 }
 
 /* ---- render & actions ---- */
@@ -397,7 +399,8 @@ function act(a,ds){
     case 'tab':u.tab=ds.tab;break;
     case 'toggle':{const sc=S.scen.find(x=>x.id==ds.id);sc.on=!sc.on;toast(sc.on?'Сценарий включён':'Сценарий выключен, отложенные срабатывания отменены');break}
     case 'edit':{const sc=ds.id==='new'?{id:null,name:'',on:true,trigger:null,conds:[],pause:0,actions:[],last:null}:clone(S.scen.find(x=>x.id==ds.id));go('editor',{draft:sc});break}
-    case 'back':go('home');break;
+    case 'back':go(u.view==='telegram'&&u.from==='applets'?'applets':'home');break;
+    case 'nav':go(ds.v);break;
     case 'open':u.pick=ds.kind;u.pickAp=null;break;
     case 'close':u.pick=null;u.pickAp=null;break;
     case 'pickAp':u.pickAp=ds.a||null;break;
@@ -421,7 +424,7 @@ function act(a,ds){
       if(d.id){S.scen[S.scen.findIndex(x=>x.id===d.id)]=clone(d)}else{d.id=S.nextId++;S.scen.push(clone(d))}
       toast('Сценарий сохранён');go('home',{tab:'scen'});break}
     case 'del':S.scen=S.scen.filter(x=>x.id!==d.id);toast('Сценарий удалён');go('home',{tab:'scen'});break;
-    case 'tgOpen':S.tg={token:'',bot:false,group:false,tested:false};go('telegram');break;
+    case 'tgOpen':S.tg={token:'',bot:false,group:false,tested:false};go('telegram',{from:u.view});break;
     case 'tgCheck':if((S.tg.token||'').length<8){toast('Вставьте токен целиком: он выглядит как 7312345678:AAH…');break}S.tg.checking=true;setTimeout(()=>{S.tg.checking=false;S.tg.bot=true;render()},700);break;
     case 'tgWait':S.tg.waiting=true;setTimeout(()=>{S.tg.waiting=false;S.tg.group=true;render()},1400);break;
     case 'tgTest':S.tg.tested=true;S.conn.state='ok';S.conn.last='14:05';S.journal.unshift({day:'Сегодня',t:'14:05',sc:'Telegram',st:'test',m:'«Robby подключён» доставлено'});break;

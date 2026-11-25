@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Switched on and off by the repository variable BUILD_ON_PUSH (see docs/release.md).
+    if: vars.BUILD_ON_PUSH == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Test :core and build debug APK
+        run: ./gradlew :core:test :app:assembleDebug
+

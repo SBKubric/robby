@@ -175,9 +175,9 @@ button{cursor:pointer}
   <section class="intro">
     <div class="eyebrow">Прототип · итерация 2 · данные примерные</div>
     <h1>Как выбирать триггеры, условия и действия из апплетов?</h1>
-    <p>Основа — вариант A первой итерации: форма «Когда / Если / То». Главный экран — пульт из варианта C. Вкладок две: «Пульт» и «Сценарии». На пульте кнопка «Активные апплеты» ведёт только к апплетам, которым нужна настройка (коннекторы, внешний модуль). Триггеры, условия и действия приходят только из апплетов: редактор их не знает и показывает то, что есть в каталоге.</p>
+    <p>Основа — вариант A первой итерации: форма «Когда / Если / То». Главный экран — список сценариев. Вторая вкладка — «Настройки»: «Активные апплеты» (только апплеты, которым нужна настройка), «Активность» (лента срабатываний) и экспорт/импорт. Триггеры, условия и действия приходят только из апплетов: редактор их не знает и показывает то, что есть в каталоге.</p>
     <div class="vcard" id="vdesc"></div>
-    <p class="note">Попробуйте: открыть «Пропущенный звонок» и добавить условие из «Батареи»; создать сценарий; открыть «Активные апплеты» на пульте. Пункты с пометкой v0.2 видны в каталоге, но выбрать их пока нельзя. Ссылка «Сымитировать поломку» на пульте показывает сломанный коннектор. Переключение вариантов — плашка внизу или ← →.</p>
+    <p class="note">Попробуйте: открыть «Пропущенный звонок» и добавить условие из «Батареи»; создать сценарий; открыть «Активные апплеты» и «Активность» в настройках. Пункты с пометкой v0.2 видны в каталоге, но выбрать их пока нельзя. Ссылка «Сымитировать поломку» в настройках показывает сломанный коннектор. Переключение вариантов — плашка внизу или ← →.</p>
   </section>
   <div class="phone" id="phone" aria-label="Экран телефона-сервера"></div>
 </div>
@@ -257,7 +257,7 @@ const S={
   tg:null,nextId:6,
 };
 const ST_LABEL={ok:'доставлено',late:'с опозданием',skip:'пропущено',fail:'ошибка',test:'тест'};
-const UI={a:{view:'home',tab:'pult'},b:{view:'home',tab:'pult'}};
+const UI={a:{view:'home',tab:'scen'},b:{view:'home',tab:'scen'}};
 let V='a',toastMsg=null,toastTimer=null;
 
 const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -332,22 +332,27 @@ function connSummary(){return S.conn.state==='ok'
   ?`<span class="st ok">работает</span><span class="small muted">${h(S.conn.bot)} → «${h(S.conn.group)}», последнее сообщение в ${S.conn.last}</span>`
   :`<span class="st fail">сломан</span><span class="small" style="color:var(--bad)">Ошибка 403: бота удалили из группы. Новые срабатывания завершаются ошибкой.</span>`}
 function checkRows(list){return list.map(c=>`<div class="item"><div class="badge" style="${c.ok?'':'background:var(--warn-soft);color:var(--warn)'}">${c.ok?'✓':'!'}</div><div class="txt"><span class="t">${h(c.t)}</span><span class="d">${h(c.d)}</span></div>${!c.ok?`<button class="btn tonal" data-act="fixCheck" data-id="${c.id}">${c.fix}</button>`:''}</div>`).join('')}
-function pult(){
-  const bad=S.checks.filter(c=>!c.ok);
-  return `<div class="hero-c"><div class="row"><span class="big">87%</span><span class="st ok">на зарядке</span><span class="spacer"></span><span class="small muted">29 °C</span></div><div class="meter"><i style="width:87%"></i></div><div class="small muted">Сервис работает с 05:12 · сегодня ${S.journal.filter(e=>e.day==='Сегодня').length} срабатывания</div></div>
-  <div class="content">
-   <button class="card" data-act="nav" data-v="applets" style="text-align:left;flex-direction:row;align-items:center"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">Активные апплеты</b><span class="small muted">Telegram ${S.conn.state==='ok'?'работает':'сломан'} · внешний модуль в v0.2</span></span><span class="muted">›</span></button>
-   ${S.conn.state==='broken'?`<div class="card" style="border-color:var(--bad)"><b style="font-weight:500">Telegram</b>${connSummary()}<button class="btn" data-act="tgOpen" style="align-self:flex-start">Переподключить</button></div>`:''}
-   ${bad.length?`<div class="sect">Требует внимания</div><div class="list">${checkRows(bad)}</div>`:''}
-   <div class="sect">Лента</div>
-   <div class="tl">${S.journal.map(e=>`<div class="e"><span class="time">${e.day==='Сегодня'?e.t:'вч '+e.t}</span><span class="pin ${e.st}"></span><span><b style="font-weight:500">${h(e.sc)}</b><br><span class="small muted">${h(e.m)}</span></span></div>`).join('')}</div>
-   <details class="small"><summary class="muted">Все проверки (${S.checks.filter(c=>c.ok).length} из ${S.checks.length} в порядке)</summary><div class="list">${checkRows(S.checks)}</div></details>
+function navCard(v,title,sub){return `<button class="card" data-act="nav" data-v="${v}" style="text-align:left;flex-direction:row;align-items:center"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">${title}</b><span class="small muted">${sub}</span></span><span class="muted">›</span></button>`}
+function settings(){
+  const e=S.journal[0];
+  return `<div class="content">
+   ${navCard('applets','Активные апплеты',`Telegram ${S.conn.state==='ok'?'работает':'сломан'} · внешний модуль в v0.2`)}
+   ${navCard('activity','Активность',`последнее: ${e.t} · ${h(e.sc)}`)}
+   <div class="sect">Настройки</div>
+   <div class="list">
+    <button class="item" data-act="noop"><span class="txt"><span class="t">Экспорт настроек</span><span class="d">Сценарии и апплеты в файл, без токенов</span></span><span class="muted">›</span></button>
+    <button class="item" data-act="noop"><span class="txt"><span class="t">Импорт</span><span class="d">Восстановить из файла на этом телефоне-сервере</span></span><span class="muted">›</span></button>
+   </div>
+   <details class="small"><summary class="muted">Проверки телефона-сервера (${S.checks.filter(c=>c.ok).length} из ${S.checks.length} в порядке)</summary><div class="list">${checkRows(S.checks)}</div></details>
    ${S.conn.state==='ok'?`<button class="btn text small" data-act="break" style="align-self:flex-start;padding-left:0">Сымитировать поломку: бота удалили из группы</button>`:''}
-   <div class="row"><button class="btn tonal" data-act="noop">Экспорт настроек</button><button class="btn text" data-act="noop">Импорт</button></div>
   </div>`;
 }
+function activity(){
+  return `<div class="content"><p class="small muted" style="margin:0">Срабатывания за 30 дней, не больше 2000 записей. Отсечённые фильтром события сюда не пишутся.</p>
+   <div class="tl">${S.journal.map(e=>`<div class="e"><span class="time">${e.day==='Сегодня'?e.t:'вч '+e.t}</span><span class="pin ${e.st}"></span><span><b style="font-weight:500">${h(e.sc)}</b><br><span class="small muted">${h(e.m)}</span></span></div>`).join('')}</div></div>`;
+}
 function scenList(){
-  return `<div class="content"><div class="list">${S.scen.map(sc=>`<div class="item"><button class="txt" data-act="edit" data-id="${sc.id}" style="border:0;background:none;text-align:left;padding:0"><span class="t">${h(sc.name)}</span><span class="d">${h(summary(sc))}</span><span class="d">${sc.last?stBadge(sc.last.st)+' '+sc.last.t:'ещё не срабатывал'}</span></button>${sw(sc.on,sc.id)}</div>`).join('')}</div></div>
+  return `<div class="content">${S.conn.state==='broken'?`<button class="err" data-act="nav" data-v="applets" style="border:0;text-align:left">Telegram сломан: бота удалили из группы. Сценарии с Telegram завершаются ошибкой. Переподключить ›</button>`:''}<div class="list">${S.scen.map(sc=>`<div class="item"><button class="txt" data-act="edit" data-id="${sc.id}" style="border:0;background:none;text-align:left;padding:0"><span class="t">${h(sc.name)}</span><span class="d">${h(summary(sc))}</span><span class="d">${sc.last?stBadge(sc.last.st)+' '+sc.last.t:'ещё не срабатывал'}</span></button>${sw(sc.on,sc.id)}</div>`).join('')}</div></div>
   <button class="fab" data-act="edit" data-id="new">+ Сценарий</button>`;
 }
 function applets(){
@@ -371,11 +376,12 @@ function app(){
   const u=ui();
   if(u.view==='editor')return editor();
   if(u.view==='telegram')return tgScreen();
-  if(u.view==='applets')return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>Активные апплеты</h3></div><div class="screen">${applets()}</div>`;
-  const tabs=[['pult','Пульт','◉'],['scen','Сценарии','≡']];
-  const title={pult:'Дом-сервер',scen:'Сценарии'}[u.tab];
-  const body={pult,scen:scenList}[u.tab]();
-  const dot=k=>k==='pult'&&(S.checks.some(c=>!c.ok)||S.conn.state==='broken');
+  const sub={applets:['Активные апплеты',applets],activity:['Активность',activity]}[u.view];
+  if(sub)return `<div class="appbar"><button class="icon-btn" data-act="back" aria-label="Назад">←</button><h3>${sub[0]}</h3></div><div class="screen">${sub[1]()}</div>`;
+  const tabs=[['scen','Сценарии','≡'],['settings','Настройки','⚙']];
+  const title={scen:'Сценарии',settings:'Настройки'}[u.tab];
+  const body={scen:scenList,settings}[u.tab]();
+  const dot=k=>k==='settings'&&(S.checks.some(c=>!c.ok)||S.conn.state==='broken');
   return `<div class="appbar"><h3>${title}</h3></div><div class="screen">${body}</div>
    <nav class="bnav" style="grid-template-columns:repeat(2,1fr)">${tabs.map(([k,l,ic])=>`<button class="${u.tab===k?'on':''}" data-act="tab" data-tab="${k}"><span class="ic">${ic}</span>${l}${dot(k)?'<span class="dot"></span>':''}</button>`).join('')}</nav>`;
 }

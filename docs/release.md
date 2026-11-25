@@ -54,7 +54,7 @@ gh secret set ROBBY_KEY_PASSWORD
 
 ## 4. Включить или выключить сборку на push
 
-Сборка APK и тесты `:core` на каждый push и pull request (`.github/workflows/ci.yml`) работают, только когда переменная репозитория `BUILD_ON_PUSH` равна `true`.
+Сборка APK и тесты `:core` на каждый push (`.github/workflows/ci.yml`) работают, только когда переменная репозитория `BUILD_ON_PUSH` равна `true`.
 
 **Settings → Secrets and variables → Actions → Variables → New repository variable**: `BUILD_ON_PUSH` = `true`. Или: `gh variable set BUILD_ON_PUSH --body true`.
 

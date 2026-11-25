@@ -42,14 +42,14 @@ jobs:
           fi
           echo "$ROBBY_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
 
-      - name: Build signed release APK
+      - name: Test :core and build signed release APK
         env:
           ROBBY_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           ROBBY_KEYSTORE_PASSWORD: ${{ secrets.ROBBY_KEYSTORE_PASSWORD }}
           ROBBY_KEY_ALIAS: ${{ secrets.ROBBY_KEY_ALIAS }}
           ROBBY_KEY_PASSWORD: ${{ secrets.ROBBY_KEY_PASSWORD }}
         run: >
-          ./gradlew :app:assembleRelease
+          ./gradlew :core:test :app:assembleRelease
           -Probby.versionName=${{ steps.version.outputs.name }}
           -Probby.versionCode=${{ steps.version.outputs.code }}
 

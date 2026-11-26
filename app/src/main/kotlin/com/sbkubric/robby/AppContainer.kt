@@ -6,6 +6,7 @@ import com.sbkubric.robby.applets.AndroidDeviceName
 import com.sbkubric.robby.applets.battery.BatteryWatchPrefs
 import com.sbkubric.robby.applets.battery.StickyBatteryState
 import com.sbkubric.robby.applets.call.AndroidContactNames
+import com.sbkubric.robby.applets.call.CallReadings
 import com.sbkubric.robby.applets.call.CallWatchPrefs
 import com.sbkubric.robby.applets.call.TelephonyCallState
 import com.sbkubric.robby.applets.system.ScenarioNotifier
@@ -65,8 +66,11 @@ class AppContainer(context: Context) {
     /** Fed by the service's battery receiver; one per process, its memory in preferences. */
     val batteryWatch = BatteryWatch(scenarios, BatteryWatchPrefs(appContext))
 
-    /** Fed by the call state receiver; the ringing call is kept in preferences, as each broadcast may start a new process. */
-    val callWatch = CallWatch(CallWatchPrefs(appContext), AndroidContactNames(appContext))
+    /**
+     * Fed by the call state receiver, in order; the ringing call is kept in preferences, as each broadcast may start
+     * a new process.
+     */
+    val callReadings = CallReadings(CallWatch(CallWatchPrefs(appContext), AndroidContactNames(appContext)), appScope)
 
     val saveScenario = SaveScenario(scenarios, ScenarioValidator(catalog))
 

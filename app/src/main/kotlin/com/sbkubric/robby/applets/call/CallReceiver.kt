@@ -15,7 +15,8 @@ import com.sbkubric.robby.applets.handleEvents
  * and then each state is broadcast twice, with and without it. Some OEM builds leave it out even then: the number is
  * «—», and a `CallScreeningService` would be the way to get it (not built in v0.1).
  *
- * Broadcasts are handled side by side; the two of a pair may be handled in either order, which the watch allows for.
+ * Readings are queued here, in the order the system delivers them, and the watch takes them one by one
+ * ([CallReadings]); the broadcast is kept alive until its reading is handled and its scenarios have run.
  */
 class CallReceiver : BroadcastReceiver() {
 
@@ -28,6 +29,7 @@ class CallReceiver : BroadcastReceiver() {
 
         val container = context.appContainer
         val time = container.clock.instant()
-        handleEvents(container) { container.callWatch.onReading(state, number, time, numberExpected) }
+        val events = container.callReadings.add(state, number, time, numberExpected)
+        handleEvents(container) { events.await() }
     }
 }

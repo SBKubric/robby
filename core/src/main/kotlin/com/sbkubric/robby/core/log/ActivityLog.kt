@@ -101,6 +101,9 @@ enum class RunReason {
 
     /** [RunStatus.CANCELLED]: the scenario was deleted. */
     SCENARIO_DELETED,
+
+    /** [RunStatus.CANCELLED]: settings were imported, replacing every scenario. */
+    SETTINGS_IMPORTED,
 }
 
 /** Port: the history of runs, newest first; it also holds the pending runs that delivery works through. */

@@ -43,17 +43,23 @@ fun formatRunTime(time: Instant, zone: ZoneId = ZoneId.systemDefault()): String 
     return if (local.toLocalDate() == LocalDate.now(zone)) timeOnly.format(local) else dateTime.format(local)
 }
 
-/** «в очереди», «выполнено» («с опозданием» if ⏱ was added), «не выполнено», «пропущено», «отменено». */
+/**
+ * «в очереди», «выполнено» («с опозданием» if ⏱ was added), «не выполнено», «пропущено», «отменено»;
+ * a run of «Тест» starts with «тест ·».
+ */
 @Composable
-fun runStatusLabel(run: Run): String = stringResource(
-    when (run.status) {
-        RunStatus.PENDING -> R.string.run_pending
-        RunStatus.DONE -> if (run.late) R.string.run_done_late else R.string.run_done
-        RunStatus.FAILED -> R.string.run_failed
-        RunStatus.SKIPPED -> R.string.run_skipped
-        RunStatus.CANCELLED -> R.string.run_cancelled
-    },
-)
+fun runStatusLabel(run: Run): String {
+    val status = stringResource(
+        when (run.status) {
+            RunStatus.PENDING -> R.string.run_pending
+            RunStatus.DONE -> if (run.late) R.string.run_done_late else R.string.run_done
+            RunStatus.FAILED -> R.string.run_failed
+            RunStatus.SKIPPED -> R.string.run_skipped
+            RunStatus.CANCELLED -> R.string.run_cancelled
+        },
+    )
+    return if (run.test) stringResource(R.string.run_test, status) else status
+}
 
 fun runTone(status: RunStatus): BadgeTone = when (status) {
     RunStatus.DONE -> BadgeTone.GOOD
@@ -78,6 +84,7 @@ fun runMessage(run: Run, catalog: AppletCatalog): String? = when (run.reason) {
     RunReason.CONNECTOR_BROKEN -> stringResource(R.string.run_error_connector_broken, run.message.orEmpty())
     RunReason.SCENARIO_DISABLED -> stringResource(R.string.run_cancelled_disabled)
     RunReason.SCENARIO_DELETED -> stringResource(R.string.run_cancelled_deleted)
+    RunReason.SETTINGS_IMPORTED -> stringResource(R.string.run_cancelled_imported)
     null -> if (run.status == RunStatus.PENDING) pendingMessage(run) else run.message
 }
 

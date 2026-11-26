@@ -18,9 +18,11 @@ class RoomScenarioRepository(private val dao: ScenarioDao) : ScenarioRepository 
     override fun observeAll(): Flow<List<Scenario>> = dao.observeAll().map { rows -> rows.mapNotNull { it.toScenario() } }
     override suspend fun all(): List<Scenario> = dao.all().mapNotNull { it.toScenario() }
     override suspend fun get(id: String): Scenario? = dao.get(id)?.toScenario()
-    override suspend fun save(scenario: Scenario) =
-        dao.upsert(ScenarioEntity(scenario.id, scenario.name, ScenarioFormat.encode(scenario)))
+    override suspend fun save(scenario: Scenario) = dao.upsert(scenario.toEntity())
     override suspend fun delete(id: String) = dao.delete(id)
+    override suspend fun replaceAll(scenarios: List<Scenario>) = dao.replaceAll(scenarios.map { it.toEntity() })
+
+    private fun Scenario.toEntity() = ScenarioEntity(id, name, ScenarioFormat.encode(this))
 
     // A document this build cannot read is skipped rather than crashing the list or the engine.
     private fun ScenarioEntity.toScenario(): Scenario? = runCatching { ScenarioFormat.decode(json) }.getOrNull()

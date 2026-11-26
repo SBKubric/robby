@@ -9,6 +9,7 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
+import androidx.room.Transaction
 import androidx.room.RoomDatabase
 import androidx.room.Update
 import androidx.room.Upsert
@@ -66,6 +67,19 @@ interface ScenarioDao {
 
     @Query("DELETE FROM scenarios WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("DELETE FROM scenarios")
+    suspend fun deleteAll()
+
+    @Insert
+    suspend fun insertAll(scenarios: List<ScenarioEntity>)
+
+    /** One transaction: the scenario list and the engine never see a mix of the old and the new. */
+    @Transaction
+    suspend fun replaceAll(scenarios: List<ScenarioEntity>) {
+        deleteAll()
+        insertAll(scenarios)
+    }
 }
 
 @Dao

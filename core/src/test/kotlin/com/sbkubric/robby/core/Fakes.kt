@@ -26,6 +26,7 @@ class FakeScenarioRepository(vararg initial: Scenario) : ScenarioRepository {
     override suspend fun get(id: String) = state.value[id]
     override suspend fun save(scenario: Scenario) { state.value += scenario.id to scenario }
     override suspend fun delete(id: String) { state.value -= id }
+    override suspend fun replaceAll(scenarios: List<Scenario>) { state.value = scenarios.associateBy { it.id } }
 }
 
 class FakeActivityLog : ActivityLog {

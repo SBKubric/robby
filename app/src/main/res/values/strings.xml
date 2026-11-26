@@ -27,6 +27,8 @@
     <string name="run_error_connector_broken">Коннектор сломан. %1$s</string>
     <string name="run_cancelled_disabled">Сценарий выключили до выполнения</string>
     <string name="run_cancelled_deleted">Сценарий удалили до выполнения</string>
+    <string name="run_cancelled_imported">Настройки заменили импортом до выполнения</string>
+    <string name="run_test">тест · %1$s</string>
     <string name="run_error_no_performer">Действие %1$s недоступно в этой версии Robby</string>
     <string name="run_error_timed_out">Не успело за отведённое время (до версии с очередью)</string>
     <string name="run_skipped">пропущено</string>

@@ -30,6 +30,12 @@ sealed interface ScenarioProblem {
 /** The rules a scenario must pass before it is saved. */
 class ScenarioValidator(private val catalog: AppletCatalog) {
 
+    /**
+     * A stored scenario is checked by the same rules: one with problems — e.g. imported with an applet this build lacks,
+     * «апплет недоступен» — stays switched off until it is fixed.
+     */
+    fun validate(scenario: Scenario): List<ScenarioProblem> = validate(ScenarioDraft.of(scenario))
+
     fun validate(draft: ScenarioDraft): List<ScenarioProblem> {
         val problems = mutableListOf<ScenarioProblem>()
         if (draft.name.isBlank()) problems += ScenarioProblem.NoName

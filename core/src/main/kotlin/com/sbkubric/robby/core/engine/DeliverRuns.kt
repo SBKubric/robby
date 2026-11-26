@@ -57,6 +57,14 @@ class DeliverRuns(
             .minOrNull()
     }
 
+    /**
+     * Cancels every pending run, test runs too, with [reason], between passes: none is performed after this returns.
+     * Used when the scenarios they belong to are replaced.
+     */
+    suspend fun cancelPending(reason: RunReason) = passing.withLock {
+        log.pending().forEach { log.update(it.finish(RunStatus.CANCELLED, null, reason)) }
+    }
+
     /** Cancels the runs whose scenario is switched off or gone; returns the others. A test run is never cancelled so. */
     private suspend fun withoutCancelled(pending: List<Run>): List<Run> {
         if (pending.isEmpty()) return pending

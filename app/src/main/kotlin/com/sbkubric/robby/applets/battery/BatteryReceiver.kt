@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 /**
  * The Battery applet's events. The system sends `ACTION_BATTERY_CHANGED` (level, temperature, plug) only to a receiver
  * registered in code, so [com.sbkubric.robby.service.RobbyService] registers this one while it runs.
- * Registering delivers the current (sticky) reading at once: the watch takes it as its start.
+ * Registering delivers the current (sticky) reading at once: the watch compares it with what it remembers,
+ * so a change while the service was not running is reported then.
  *
  * Readings arrive on the main thread and are handed, in order, to one coroutine that asks the watch for events;
  * the scenarios of those events run separately, so a slow action does not hold up the next reading.

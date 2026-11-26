@@ -114,7 +114,7 @@ class BatteryWatchTest {
     }
 
     @Test
-    fun `first reading below the threshold does not report it`() {
+    fun `without memory the first reading only sets the state, even below the threshold and unplugged`() {
         val watch = watch(scenario("battery.below", "level" to "20"))
 
         assertEquals(listOf(emptyList<String>(), emptyList()), watch.feed(battery(15, plugged = false), battery(14, plugged = false)))
@@ -143,27 +143,32 @@ class BatteryWatchTest {
     }
 
     @Test
-    fun `after a restart a threshold already reported waits for the margin, and the first reading reports nothing`() {
+    fun `after a restart a threshold already reported still waits for the margin`() {
         val scenarios = arrayOf(scenario("battery.below", "level" to "20"))
-        watch(*scenarios).feed(battery(30), battery(19, plugged = false), battery(21, plugged = false))
+        watch(*scenarios).feed(battery(30), battery(19), battery(21))
 
         // The process died and came back: a new watch over the same store.
         val restarted = watch(*scenarios)
 
         assertEquals(
-            listOf(emptyList(), emptyList(), emptyList(), listOf("battery.below 20")), // 21 plugged, 19 (no margin yet), 22, 19
-            restarted.feed(battery(21), battery(19), battery(22), battery(19)),
+            listOf(emptyList(), emptyList(), listOf("battery.below 20")), // 19 (no margin yet), 22, 19
+            restarted.feed(battery(19), battery(22), battery(19)),
         )
     }
 
     @Test
-    fun `after a restart a change of the charger that happened while Robby was not running is not caught up`() {
+    fun `after a restart unplugging that happened while Robby was not running is reported by the first reading`() {
         watch().feed(battery(50))
 
-        assertEquals(
-            listOf(emptyList(), listOf("battery.plugged")),
-            watch().feed(battery(50, plugged = false), battery(50)),
-        )
+        assertEquals(listOf(listOf("battery.unplugged"), emptyList()), watch().feed(battery(50, plugged = false), battery(49, plugged = false)))
+    }
+
+    @Test
+    fun `after a restart a crossing of an armed threshold that happened while Robby was not running is reported`() {
+        val scenarios = arrayOf(scenario("battery.below", "level" to "20"))
+        watch(*scenarios).feed(battery(30))
+
+        assertEquals(listOf(listOf("battery.below 20"), emptyList()), watch(*scenarios).feed(battery(15), battery(14)))
     }
 
     @Test

@@ -18,9 +18,11 @@ import java.time.Instant
  * The thresholds are those of the enabled scenarios; one event per crossed threshold carries it in
  * [BatteryApplet.THRESHOLD], and the trigger's filter picks the scenarios with that threshold.
  *
- * What it remembers outlives the process ([BatteryWatchStore]), so a restart does not re-arm a threshold early.
- * The first reading of a new watch (after a start) reports nothing: changes while Robby was not running are not
- * caught up. A threshold it has not seen yet, e.g. of a new scenario, only takes its state from the reading.
+ * What it remembers outlives the process ([BatteryWatchStore]). After a restart the first reading is compared with it
+ * like any other: a change of the charger or a crossing of an armed threshold while Robby was not running is reported
+ * then, at the time of that reading (it is a change of state seen now, not a missed event), and a threshold that
+ * already fired is not re-armed early. With nothing remembered (the first reading ever) and for a threshold it has not
+ * seen yet, e.g. of a new scenario, a reading only sets the state.
  */
 class BatteryWatch(
     private val scenarios: ScenarioRepository,
@@ -35,14 +37,13 @@ class BatteryWatch(
     data class Threshold(val trigger: String, val value: Int, val armed: Boolean)
 
     private val mutex = Mutex()
-    private var started = false
+    private var loaded = false
     private var memory: Memory? = null
 
     /** The events of this [battery] reading, which happened at [time]. */
     suspend fun onReading(battery: BatteryState, time: Instant): List<Event> = mutex.withLock {
-        val before = if (started) memory else store.load()
-        val first = !started
-        started = true
+        val before = if (loaded) memory else store.load()
+        loaded = true
 
         val values = BatteryApplet.values(battery)
         val events = mutableListOf<Event>()
@@ -66,7 +67,7 @@ class BatteryWatch(
         val after = Memory(battery.plugged, thresholds)
         if (after != before) store.save(after)
         memory = after
-        if (first) emptyList() else events
+        events
     }
 
     /** Distinct (trigger, threshold) pairs of the enabled scenarios with a threshold trigger. */

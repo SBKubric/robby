@@ -16,6 +16,8 @@
     <!-- Run statuses -->
     <string name="run_done">выполнено</string>
     <string name="run_failed">ошибка</string>
+    <string name="run_error_no_performer">Действие %1$s недоступно в этой версии Robby</string>
+    <string name="run_error_timed_out">Не успело за отведённое время</string>
 
     <!-- Editor -->
     <string name="editor_title_new">Новый сценарий</string>

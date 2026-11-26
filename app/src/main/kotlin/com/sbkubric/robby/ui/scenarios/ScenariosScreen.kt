@@ -27,6 +27,7 @@ import com.sbkubric.robby.R
 import com.sbkubric.robby.ui.appContainer
 import com.sbkubric.robby.ui.formatRunTime
 import com.sbkubric.robby.ui.runStatusLabel
+import com.sbkubric.robby.ui.summaryLine
 import kotlinx.coroutines.launch
 
 /** Home: every scenario with its switch, summary and last run. */
@@ -58,7 +59,7 @@ fun ScenariosScreen(onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
                 headlineContent = { Text(scenario.name) },
                 supportingContent = {
                     Text(
-                        container.catalog.summary(scenario) + "\n" + if (last == null) {
+                        summaryLine(container.catalog.describe(scenario)) + "\n" + if (last == null) {
                             stringResource(R.string.scenario_never_ran)
                         } else {
                             stringResource(R.string.scenario_last_run, formatRunTime(last.time), runStatusLabel(last.status))

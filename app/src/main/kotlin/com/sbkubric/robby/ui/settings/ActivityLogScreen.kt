@@ -25,6 +25,7 @@ import com.sbkubric.robby.ui.BackTopBar
 import com.sbkubric.robby.ui.StatusBadge
 import com.sbkubric.robby.ui.appContainer
 import com.sbkubric.robby.ui.formatRunTime
+import com.sbkubric.robby.ui.runMessage
 import com.sbkubric.robby.ui.runStatusLabel
 
 /** «Журнал активности»: every run, newest first. */
@@ -50,7 +51,7 @@ fun ActivityLogScreen(onBack: () -> Unit) {
                         Text(run.scenarioName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                         StatusBadge(runStatusLabel(run.status), good = run.status == RunStatus.DONE)
                     }
-                    run.message?.let {
+                    runMessage(run)?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

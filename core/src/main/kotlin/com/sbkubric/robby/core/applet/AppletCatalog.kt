@@ -25,17 +25,23 @@ class AppletCatalog(val applets: List<Applet>) {
 
     fun appletsWithActions(): List<Applet> = applets.filter { it.actions.isNotEmpty() }
 
-    /** One line for the scenario list, e.g. «Входящее SMS (900) → Telegram: Отправить сообщение в группу». */
-    fun summary(scenario: Scenario): String {
+    /** What the scenario list shows about a scenario, built from the catalog alone; the UI lays it out. */
+    fun describe(scenario: Scenario): ScenarioDescription {
         val spec = trigger(scenario.trigger.id)
-        val filled = spec?.params.orEmpty()
-            .filter { !it.isTemplate }
-            .mapNotNull { scenario.trigger.params[it.key]?.trim()?.takeIf(String::isNotEmpty) }
-        val trigger = (spec?.label ?: scenario.trigger.id) + if (filled.isEmpty()) "" else filled.joinToString(", ", " (", ")")
-        val actions = scenario.actions.joinToString(", ") { action ->
-            val label = action(action.id)?.label ?: return@joinToString action.id
-            "${appletOf(action.id)?.name}: $label"
-        }
-        return "$trigger → $actions"
+        return ScenarioDescription(
+            trigger = spec?.label ?: scenario.trigger.id,
+            filters = spec?.params.orEmpty()
+                .filter { !it.isTemplate }
+                .mapNotNull { scenario.trigger.params[it.key]?.trim()?.takeIf(String::isNotEmpty) },
+            actions = scenario.actions.map { action ->
+                val label = action(action.id)?.label
+                ScenarioDescription.Step(applet = label?.let { appletOf(action.id)?.name }, label = label ?: action.id)
+            },
+        )
     }
+}
+
+/** Labels of a scenario's trigger, its filled filters and its actions (an unknown element shows its id). */
+data class ScenarioDescription(val trigger: String, val filters: List<String>, val actions: List<Step>) {
+    data class Step(val applet: String?, val label: String)
 }

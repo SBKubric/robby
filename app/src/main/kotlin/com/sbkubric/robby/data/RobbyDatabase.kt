@@ -10,6 +10,9 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
 
 /** A scenario stored as its JSON document (`ScenarioFormat`); the name is a column only for sorting. */
@@ -29,6 +32,8 @@ data class RunEntity(
     val timeMillis: Long,
     val status: String,
     val message: String?,
+    /** `RunError` name, if the engine itself failed the run. */
+    val error: String? = null,
 )
 
 @Dao
@@ -67,14 +72,22 @@ interface RunDao {
     suspend fun prune(olderThanMillis: Long, keepNewest: Int)
 }
 
-// No exported schema and no migrations yet: nothing has been released, the schema may still change.
-@Database(entities = [ScenarioEntity::class, RunEntity::class], version = 1, exportSchema = false)
+// No exported schema yet: nothing has been released. Migrations keep debug installs working meanwhile.
+@Database(entities = [ScenarioEntity::class, RunEntity::class], version = 2, exportSchema = false)
 abstract class RobbyDatabase : RoomDatabase() {
     abstract fun scenarios(): ScenarioDao
     abstract fun runs(): RunDao
 
     companion object {
         fun create(context: Context): RobbyDatabase =
-            Room.databaseBuilder(context, RobbyDatabase::class.java, "robby.db").build()
+            Room.databaseBuilder(context, RobbyDatabase::class.java, "robby.db")
+                .addMigrations(ADD_RUN_ERROR)
+                .build()
+
+        private val ADD_RUN_ERROR = object : Migration(1, 2) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE runs ADD COLUMN error TEXT")
+            }
+        }
     }
 }

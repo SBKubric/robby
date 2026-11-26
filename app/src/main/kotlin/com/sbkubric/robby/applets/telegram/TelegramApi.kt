@@ -1,7 +1,8 @@
 package com.sbkubric.robby.applets.telegram
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -61,34 +62,46 @@ class TelegramApi(private val baseUrl: String = "https://api.telegram.org") {
                 put("text", text)
                 putJsonObject("link_preview_options") { put("is_disabled", true) }
             },
+            // Short, so that one attempt fits the SMS receiver's time (slice 6 moves delivery to a queue).
+            connectTimeoutMillis = 5_000,
+            readTimeoutMillis = 5_000,
         )
 
     private suspend fun call(
         token: String,
         method: String,
         body: JsonObject,
+        connectTimeoutMillis: Int = 10_000,
         readTimeoutMillis: Int = 20_000,
-    ): Response = withContext(Dispatchers.IO) {
-        try {
-            val connection = URL("$baseUrl/bot$token/$method").openConnection() as HttpURLConnection
-            try {
-                connection.requestMethod = "POST"
-                connection.connectTimeout = 10_000
-                connection.readTimeout = readTimeoutMillis
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                connection.outputStream.use { it.write(body.toString().toByteArray()) }
-                val code = connection.responseCode
-                val stream = if (code < 400) connection.inputStream else connection.errorStream
-                val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                parse(code, text)
-            } finally {
-                connection.disconnect()
+    ): Response {
+        val connection = URL("$baseUrl/bot$token/$method").openConnection() as HttpURLConnection
+        connection.connectTimeout = connectTimeoutMillis
+        connection.readTimeout = readTimeoutMillis
+        return suspendCancellableCoroutine { continuation ->
+            // Blocking socket I/O ignores coroutine cancellation: closing the connection is what stops it,
+            // so a caller's time limit (e.g. the SMS receiver's) is kept even in the middle of a request.
+            continuation.invokeOnCancellation { connection.disconnect() }
+            Dispatchers.IO.asExecutor().execute {
+                continuation.resumeWith(runCatching { exchange(connection, token, body) })
             }
-        } catch (e: IOException) {
-            Response.NetworkError((e.message ?: e.javaClass.simpleName).replace(token, "***"))
         }
     }
+
+    private fun exchange(connection: HttpURLConnection, token: String, body: JsonObject): Response =
+        try {
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connection.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = connection.responseCode
+            val stream = if (code < 400) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            parse(code, text)
+        } catch (e: IOException) {
+            Response.NetworkError((e.message ?: e.javaClass.simpleName).replace(token, "***"))
+        } finally {
+            connection.disconnect()
+        }
 
     private fun parse(code: Int, text: String): Response {
         val reply = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull()

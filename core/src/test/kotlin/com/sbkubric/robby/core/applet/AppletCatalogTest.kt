@@ -14,20 +14,30 @@ class AppletCatalogTest {
     private fun scenario(trigger: Trigger, vararg actions: Action) = Scenario("id", "Имя", true, trigger, actions.toList())
 
     @Test
-    fun `summary lists trigger with its filled filters and actions with their applets`() {
-        val summary = catalog.summary(
+    fun `description lists trigger with its filled filters and actions with their applets`() {
+        val description = catalog.describe(
             scenario(
                 Trigger("sms.in", mapOf("sender" to "900", "text" to "код")),
                 Action("telegram.send", mapOf("text" to "{sms.text}")),
             ),
         )
-        assertEquals("Входящее SMS (900, код) → Telegram: Отправить сообщение в группу", summary)
+        assertEquals(
+            ScenarioDescription(
+                trigger = "Входящее SMS",
+                filters = listOf("900", "код"),
+                actions = listOf(ScenarioDescription.Step("Telegram", "Отправить сообщение в группу")),
+            ),
+            description,
+        )
     }
 
     @Test
-    fun `summary leaves out empty filters and shows unknown elements by id`() {
-        val summary = catalog.summary(scenario(Trigger("sms.in", mapOf("sender" to " ")), Action("module.bridge")))
-        assertEquals("Входящее SMS → module.bridge", summary)
+    fun `description leaves out empty filters and shows unknown elements by id`() {
+        val description = catalog.describe(scenario(Trigger("sms.in", mapOf("sender" to " ")), Action("module.bridge")))
+        assertEquals(
+            ScenarioDescription("Входящее SMS", emptyList(), listOf(ScenarioDescription.Step(null, "module.bridge"))),
+            description,
+        )
     }
 
     @Test

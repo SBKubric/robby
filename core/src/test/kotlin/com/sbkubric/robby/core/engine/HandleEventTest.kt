@@ -4,16 +4,20 @@ import com.sbkubric.robby.core.FakeActivityLog
 import com.sbkubric.robby.core.FakeScenarioRepository
 import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.log.Run
+import com.sbkubric.robby.core.log.RunError
 import com.sbkubric.robby.core.log.RunStatus
 import com.sbkubric.robby.core.scenario.Action
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.Trigger
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 class HandleEventTest {
 
@@ -137,7 +141,34 @@ class HandleEventTest {
     fun `action without a performer fails the run`() = runBlocking {
         engine(smsScenario(), performers = emptyMap()).invoke(sms("900"))
 
-        assertEquals(listOf(RunStatus.FAILED to "No performer for action telegram.send"), log.runs.value.map { it.status to it.message })
+        assertEquals(
+            listOf(Run("bank", "SMS от банка", now, RunStatus.FAILED, "telegram.send", RunError.NO_PERFORMER)),
+            log.runs.value,
+        )
+    }
+
+    @Test
+    fun `run that does not finish within the time limit is logged as timed out`() = runBlocking {
+        val performers = mapOf(
+            "telegram.send" to ActionPerformer { params ->
+                if (params["text"] == "slow") delay(10_000)
+                ActionResult.Done("Доставлено")
+            },
+        )
+        val started = System.nanoTime()
+
+        val runs = engine(smsScenario(id = "slow", message = "slow"), smsScenario(id = "fast", message = "fast"), performers = performers)
+            .invoke(sms("900"), timeLimit = 200.milliseconds)
+
+        assertTrue(System.nanoTime() - started < 5_000_000_000, "the engine must not wait for the slow action")
+        assertEquals(
+            mapOf(
+                "slow" to Triple(RunStatus.FAILED, null, RunError.TIMED_OUT),
+                "fast" to Triple(RunStatus.DONE, "Доставлено", null),
+            ),
+            log.runs.value.associate { it.scenarioId to Triple(it.status, it.message, it.error) },
+        )
+        assertEquals(runs.toSet(), log.runs.value.toSet())
     }
 
     @Test

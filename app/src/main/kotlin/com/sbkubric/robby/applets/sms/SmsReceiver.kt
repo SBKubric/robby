@@ -7,7 +7,11 @@ import android.provider.Telephony
 import com.sbkubric.robby.appContainer
 import com.sbkubric.robby.core.applets.SmsApplet
 import com.sbkubric.robby.core.engine.Event
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Turns an incoming SMS into an `sms.in` event for the engine. A long SMS arrives as several parts
@@ -35,14 +39,23 @@ class SmsReceiver : BroadcastReceiver() {
                 )
             }
 
-        // Keeps the broadcast alive while the scenarios run; a delivery queue in the service is slice 6.
+        // Keeps the broadcast alive while the scenarios run, within the ~10 s the system allows a receiver:
+        // the engine stops a run after RUN_LIMIT and logs it as timed out; BROADCAST_LIMIT is the backstop
+        // that always lets finish() happen. A delivery queue in the service replaces this in slice 6.
         val pending = goAsync()
         container.appScope.launch {
             try {
-                events.forEach { container.handleEvent(it) }
+                withTimeoutOrNull(BROADCAST_LIMIT) {
+                    events.map { async { container.handleEvent(it, timeLimit = RUN_LIMIT) } }.awaitAll()
+                }
             } finally {
                 pending.finish()
             }
         }
+    }
+
+    private companion object {
+        val RUN_LIMIT = 8.seconds
+        val BROADCAST_LIMIT = 9.seconds
     }
 }

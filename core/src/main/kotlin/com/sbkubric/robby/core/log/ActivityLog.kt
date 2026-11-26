@@ -11,11 +11,24 @@ data class Run(
     /** Time of the event that started the run. */
     val time: Instant,
     val status: RunStatus,
-    /** What happened, e.g. where the message was delivered or why the action failed. */
+    /**
+     * What happened, e.g. where the message was delivered or why the action failed (text from the applet).
+     * For an [error] of the engine itself it is the detail, e.g. the action id.
+     */
     val message: String?,
+    /** A failure found by the engine itself; the UI turns it into text. `null` for applet results. */
+    val error: RunError? = null,
 )
 
 enum class RunStatus { DONE, FAILED }
+
+enum class RunError {
+    /** No performer is registered for the action ([Run.message] holds its id). */
+    NO_PERFORMER,
+
+    /** The actions did not finish within the time the caller allowed. */
+    TIMED_OUT,
+}
 
 /** Port: the history of runs, newest first. */
 interface ActivityLog {

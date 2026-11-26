@@ -21,6 +21,9 @@ import com.sbkubric.robby.AppContainer
 import com.sbkubric.robby.R
 import com.sbkubric.robby.appContainer
 import com.sbkubric.robby.core.applet.ConnectorState
+import com.sbkubric.robby.core.applet.ScenarioDescription
+import com.sbkubric.robby.core.log.Run
+import com.sbkubric.robby.core.log.RunError
 import com.sbkubric.robby.core.log.RunStatus
 import java.time.Instant
 import java.time.LocalDate
@@ -46,6 +49,21 @@ fun runStatusLabel(status: RunStatus): String = stringResource(
         RunStatus.FAILED -> R.string.run_failed
     },
 )
+
+/** What the activity log says about a run: the applet's own text, or the engine's error from strings.xml. */
+@Composable
+fun runMessage(run: Run): String? = when (run.error) {
+    RunError.NO_PERFORMER -> stringResource(R.string.run_error_no_performer, run.message.orEmpty())
+    RunError.TIMED_OUT -> stringResource(R.string.run_error_timed_out)
+    null -> run.message
+}
+
+/** «Входящее SMS (900) → Telegram: Отправить сообщение в группу». */
+fun summaryLine(description: ScenarioDescription): String {
+    val filters = if (description.filters.isEmpty()) "" else description.filters.joinToString(", ", " (", ")")
+    val actions = description.actions.joinToString(", ") { step -> step.applet?.let { "$it: ${step.label}" } ?: step.label }
+    return "${description.trigger}$filters → $actions"
+}
 
 @Composable
 fun connectorStateLabel(state: ConnectorState): String = stringResource(

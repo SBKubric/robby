@@ -98,7 +98,7 @@ private fun HomeScreen(onOpenScenario: (String?) -> Unit, onOpenApplets: () -> U
     ) { padding ->
         val modifier = Modifier.padding(padding)
         when (current) {
-            Tab.Scenarios -> ScenariosScreen(onOpen = { onOpenScenario(it) }, modifier = modifier)
+            Tab.Scenarios -> ScenariosScreen(onOpen = { onOpenScenario(it) }, onOpenApplets = onOpenApplets, modifier = modifier)
             Tab.Settings -> SettingsScreen(onOpenApplets, onOpenLog, modifier)
         }
     }

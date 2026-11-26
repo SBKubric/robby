@@ -1,11 +1,10 @@
 package com.sbkubric.robby.core.applets
 
 import com.sbkubric.robby.core.FakeActivityLog
+import com.sbkubric.robby.core.texts
 import com.sbkubric.robby.core.FakeCallWatchStore
 import com.sbkubric.robby.core.FakeScenarioRepository
 import com.sbkubric.robby.core.applet.CallState
-import com.sbkubric.robby.core.engine.ActionPerformer
-import com.sbkubric.robby.core.engine.ActionResult
 import com.sbkubric.robby.core.engine.ContactNames
 import com.sbkubric.robby.core.engine.Event
 import com.sbkubric.robby.core.engine.HandleEvent
@@ -35,7 +34,6 @@ class CallAppletTest {
     private fun engine(vararg scenarios: Scenario) = HandleEvent(
         scenarios = FakeScenarioRepository(*scenarios),
         catalog = BuiltInApplets.catalog,
-        performers = mapOf("telegram.send" to ActionPerformer { sent += it.getValue("text"); ActionResult.Done() }),
         log = FakeActivityLog(),
         deviceName = { "Pixel дома" },
         battery = { null },
@@ -69,7 +67,7 @@ class CallAppletTest {
 
         for (number in listOf("+79161234567", "+79035550000")) {
             listOf(CallState.RINGING to null, CallState.RINGING to number, CallState.IDLE to null, CallState.IDLE to null)
-                .forEach { (state, n) -> watch.onReading(state, n, now, numberExpected = true).forEach { engine(it) } }
+                .forEach { (state, n) -> watch.onReading(state, n, now, numberExpected = true).forEach { sent += engine(it).flatMap { run -> run.texts() } } }
         }
 
         assertEquals(listOf("Пропущенный от +79161234567 (Мама)", "Пропущенный от +79035550000 (—)"), sent)

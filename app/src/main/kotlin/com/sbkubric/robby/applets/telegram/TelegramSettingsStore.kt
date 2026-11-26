@@ -28,6 +28,15 @@ class TelegramSettingsStore(context: Context) {
     /** `null` until the wizard has finished: the connector is «Не настроен». */
     val settings: StateFlow<TelegramSettings?> = state.asStateFlow()
 
+    private val broken = MutableStateFlow(prefs.getString(BROKEN, null))
+
+    /** Why Telegram rejected the settings («Сломан»); `null` while they work. Survives restarts. */
+    val brokenReason: StateFlow<String?> = broken.asStateFlow()
+
+    /**
+     * Stores settings that have just sent a message (the wizard's test, or a send that followed a migration),
+     * so they work: the connector is no longer broken.
+     */
     fun save(settings: TelegramSettings) {
         prefs.edit {
             putString(TOKEN, settings.token)
@@ -35,8 +44,15 @@ class TelegramSettingsStore(context: Context) {
             putLong(CHAT_ID, settings.chatId)
             putString(TITLE, settings.groupTitle)
             if (settings.threadId != null) putLong(THREAD_ID, settings.threadId) else remove(THREAD_ID)
+            remove(BROKEN)
         }
         state.value = settings
+        broken.value = null
+    }
+
+    fun markBroken(reason: String) {
+        prefs.edit { putString(BROKEN, reason) }
+        broken.value = reason
     }
 
     private fun load(): TelegramSettings? {
@@ -57,5 +73,6 @@ class TelegramSettingsStore(context: Context) {
         const val CHAT_ID = "chat_id"
         const val TITLE = "group_title"
         const val THREAD_ID = "thread_id"
+        const val BROKEN = "broken_reason"
     }
 }

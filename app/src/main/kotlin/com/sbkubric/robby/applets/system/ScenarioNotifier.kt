@@ -11,17 +11,17 @@ import com.sbkubric.robby.R
 import com.sbkubric.robby.core.applets.SystemApplet
 import com.sbkubric.robby.core.engine.ActionPerformer
 import com.sbkubric.robby.core.engine.ActionResult
-import java.util.concurrent.atomic.AtomicInteger
 
 /** `system.notify`: a notification on the server phone, in its own channel «Уведомления сценариев». */
 class ScenarioNotifier(context: Context) {
     private val context = context.applicationContext
     private val manager = this.context.getSystemService(NotificationManager::class.java)
 
-    // Each notification stays until swiped away; ids start away from the service's own notification.
-    private val ids = AtomicInteger(FIRST_ID)
-
-    val performer = ActionPerformer { params ->
+    /**
+     * Each run's notification has its own tag, the action's key (run id and action index): it stays until swiped away,
+     * is not replaced by another run's after a restart, and a repeated attempt of the same action replaces itself.
+     */
+    val performer = ActionPerformer { params, key ->
         if (!manager.areNotificationsEnabled()) {
             return@ActionPerformer ActionResult.Failed(this.context.getString(R.string.notify_disabled))
         }
@@ -42,7 +42,7 @@ class ScenarioNotifier(context: Context) {
             .setContentIntent(openApp)
             .setAutoCancel(true)
             .build()
-        manager.notify(ids.getAndIncrement(), notification)
+        manager.notify(TAG_PREFIX + key, NOTIFICATION_ID, notification)
         ActionResult.Done(this.context.getString(R.string.notify_shown, title))
     }
 
@@ -57,6 +57,9 @@ class ScenarioNotifier(context: Context) {
 
     private companion object {
         const val CHANNEL_ID = "scenarios"
-        const val FIRST_ID = 1000
+        const val TAG_PREFIX = "run:"
+
+        // Notifications are told apart by their tag; the id only has to differ from the service's own (1).
+        const val NOTIFICATION_ID = 1000
     }
 }

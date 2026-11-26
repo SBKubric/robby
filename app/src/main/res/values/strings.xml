@@ -12,12 +12,23 @@
     <string name="scenario_last_run">Последнее: %1$s · %2$s</string>
     <string name="scenario_never_ran">Ещё не срабатывал</string>
     <string name="scenario_switch">Включён</string>
+    <string name="banner_broken">%1$s сломан: %2$s</string>
+    <string name="banner_reconnect">Переподключить ›</string>
 
     <!-- Run statuses -->
     <string name="run_done">выполнено</string>
-    <string name="run_failed">ошибка</string>
+    <string name="run_failed">не выполнено</string>
+    <string name="run_pending">в очереди</string>
+    <string name="run_done_late">выполнено с опозданием</string>
+    <string name="run_cancelled">отменено</string>
+    <string name="run_pending_new">Ждёт отправки</string>
+    <string name="run_pending_retry">Следующая попытка в %1$s (неудачных: %2$d). %3$s</string>
+    <string name="run_error_gave_up">Не удалось за 24 часа. %1$s</string>
+    <string name="run_error_connector_broken">Коннектор сломан. %1$s</string>
+    <string name="run_cancelled_disabled">Сценарий выключили до выполнения</string>
+    <string name="run_cancelled_deleted">Сценарий удалили до выполнения</string>
     <string name="run_error_no_performer">Действие %1$s недоступно в этой версии Robby</string>
-    <string name="run_error_timed_out">Не успело за отведённое время</string>
+    <string name="run_error_timed_out">Не успело за отведённое время (до версии с очередью)</string>
     <string name="run_skipped">пропущено</string>
     <string name="run_skipped_condition">Не выполнено условие «%1$s»</string>
     <string name="run_skipped_cooldown">Пауза: сценарий недавно срабатывал</string>
@@ -106,6 +117,7 @@
     <string name="applets_telegram_details">Бот @%1$s пишет в «%2$s»</string>
     <string name="applets_setup">Настроить</string>
     <string name="applets_setup_again">Настроить заново</string>
+    <string name="applets_broken_reason">%1$s. Сообщения не отправляются, пока бот не настроен заново.</string>
 
     <!-- Telegram wizard -->
     <string name="tg_title">Настройка Telegram</string>
@@ -138,7 +150,7 @@
     <string name="telegram_network_error">Нет связи с Telegram: %1$s</string>
 
     <!-- Activity log -->
-    <string name="log_intro">Срабатывания за 30 дней, не больше 2000 записей, в том числе пропущенные условием или Паузой. События, не прошедшие фильтр, сюда не пишутся.</string>
+    <string name="log_intro">Срабатывания за 30 дней, не больше 2000 записей, в том числе пропущенные условием или Паузой. События, не прошедшие фильтр, сюда не пишутся. Если сети нет, срабатывание ждёт в очереди до 24 часов, а опоздавшее сообщение помечается ⏱ со временем события.</string>
     <string name="log_empty">Срабатываний пока не было.</string>
 
     <!-- System applet -->
@@ -146,6 +158,11 @@
     <string name="notify_channel_description">Уведомления, которые показывают сценарии Robby</string>
     <string name="notify_disabled">Уведомления Robby выключены в настройках Android</string>
     <string name="notify_shown">Показано уведомление «%1$s»</string>
+
+    <string name="broken_channel_name">Сбои коннекторов</string>
+    <string name="broken_channel_description">Постоянное уведомление, пока коннектор сломан и сообщения не отправляются</string>
+    <string name="broken_notification_title">%1$s сломан</string>
+    <string name="broken_notification_text">%1$s. Откройте Robby → Настройки → Активные апплеты и переподключите.</string>
 
     <string name="service_channel_name">Работа Robby</string>
     <string name="service_channel_description">Постоянное уведомление: Robby работает в фоне и ждёт событий</string>

@@ -43,22 +43,28 @@ fun formatRunTime(time: Instant, zone: ZoneId = ZoneId.systemDefault()): String 
     return if (local.toLocalDate() == LocalDate.now(zone)) timeOnly.format(local) else dateTime.format(local)
 }
 
+/** «в очереди», «выполнено» («с опозданием» if ⏱ was added), «не выполнено», «пропущено», «отменено». */
 @Composable
-fun runStatusLabel(status: RunStatus): String = stringResource(
-    when (status) {
-        RunStatus.DONE -> R.string.run_done
+fun runStatusLabel(run: Run): String = stringResource(
+    when (run.status) {
+        RunStatus.PENDING -> R.string.run_pending
+        RunStatus.DONE -> if (run.late) R.string.run_done_late else R.string.run_done
         RunStatus.FAILED -> R.string.run_failed
         RunStatus.SKIPPED -> R.string.run_skipped
+        RunStatus.CANCELLED -> R.string.run_cancelled
     },
 )
 
 fun runTone(status: RunStatus): BadgeTone = when (status) {
     RunStatus.DONE -> BadgeTone.GOOD
     RunStatus.FAILED -> BadgeTone.BAD
-    RunStatus.SKIPPED -> BadgeTone.NEUTRAL
+    RunStatus.PENDING, RunStatus.SKIPPED, RunStatus.CANCELLED -> BadgeTone.NEUTRAL
 }
 
-/** What the activity log says about a run: the applet's own text, or the engine's reason from strings.xml. */
+/**
+ * What the activity log says about a run: the applet's own text, or the engine's reason from strings.xml;
+ * a pending run says when it is tried next and why the last attempt failed.
+ */
 @Composable
 fun runMessage(run: Run, catalog: AppletCatalog): String? = when (run.reason) {
     RunReason.NO_PERFORMER -> stringResource(R.string.run_error_no_performer, run.message.orEmpty())
@@ -68,7 +74,17 @@ fun runMessage(run: Run, catalog: AppletCatalog): String? = when (run.reason) {
         run.message?.let { id -> catalog.condition(id)?.label ?: id }.orEmpty(),
     )
     RunReason.COOLDOWN -> stringResource(R.string.run_skipped_cooldown)
-    null -> run.message
+    RunReason.GAVE_UP -> stringResource(R.string.run_error_gave_up, run.message.orEmpty())
+    RunReason.CONNECTOR_BROKEN -> stringResource(R.string.run_error_connector_broken, run.message.orEmpty())
+    RunReason.SCENARIO_DISABLED -> stringResource(R.string.run_cancelled_disabled)
+    RunReason.SCENARIO_DELETED -> stringResource(R.string.run_cancelled_deleted)
+    null -> if (run.status == RunStatus.PENDING) pendingMessage(run) else run.message
+}
+
+@Composable
+private fun pendingMessage(run: Run): String {
+    val next = run.nextAttemptAt ?: return stringResource(R.string.run_pending_new)
+    return stringResource(R.string.run_pending_retry, formatRunTime(next), run.attempts, run.message.orEmpty())
 }
 
 /** «По расписанию (по будням, 09:00) · если Окно времени (09:00, 18:00) → Telegram: Отправить сообщение в группу · пауза 1 ч». */

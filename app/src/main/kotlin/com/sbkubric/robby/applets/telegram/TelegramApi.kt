@@ -29,8 +29,16 @@ class TelegramApi(private val baseUrl: String = "https://api.telegram.org") {
     sealed interface Response {
         data class Ok(val result: JsonElement) : Response
 
-        /** Telegram answered `ok: false`; [description] is shown to the user as is. */
-        data class Error(val httpCode: Int, val description: String, val migrateToChatId: Long?) : Response
+        /**
+         * Telegram answered `ok: false`; [description] is shown to the user as is.
+         * [retryAfterSeconds]: on 429, how long Telegram asks to wait.
+         */
+        data class Error(
+            val httpCode: Int,
+            val description: String,
+            val migrateToChatId: Long?,
+            val retryAfterSeconds: Long? = null,
+        ) : Response
 
         /** No answer: no network, timeout, or an unreadable reply. */
         data class NetworkError(val message: String) : Response
@@ -62,9 +70,6 @@ class TelegramApi(private val baseUrl: String = "https://api.telegram.org") {
                 put("text", text)
                 putJsonObject("link_preview_options") { put("is_disabled", true) }
             },
-            // Short, so that one attempt fits the SMS receiver's time (slice 6 moves delivery to a queue).
-            connectTimeoutMillis = 5_000,
-            readTimeoutMillis = 5_000,
         )
 
     private suspend fun call(
@@ -117,6 +122,7 @@ class TelegramApi(private val baseUrl: String = "https://api.telegram.org") {
             httpCode = code,
             description = reply["description"]?.jsonPrimitive?.contentOrNull ?: "HTTP $code",
             migrateToChatId = parameters?.get("migrate_to_chat_id")?.jsonPrimitive?.longOrNull,
+            retryAfterSeconds = parameters?.get("retry_after")?.jsonPrimitive?.longOrNull,
         )
     }
 }

@@ -36,6 +36,7 @@ fun ActiveAppletsScreen(onBack: () -> Unit, onSetupTelegram: () -> Unit) {
     val container = appContainer()
     val state by container.telegram.state.collectAsState(initial = ConnectorState.NOT_CONFIGURED)
     val settings by container.telegram.settings.collectAsState()
+    val broken by container.telegram.brokenReason.collectAsState()
 
     Scaffold(topBar = { BackTopBar(stringResource(R.string.settings_applets), onBack) }) { padding ->
         Column(
@@ -53,6 +54,7 @@ fun ActiveAppletsScreen(onBack: () -> Unit, onSetupTelegram: () -> Unit) {
                         applet = applet,
                         state = state,
                         details = settings?.let { stringResource(R.string.applets_telegram_details, it.botUsername, it.groupTitle) },
+                        problem = broken?.takeIf { state == ConnectorState.BROKEN }?.let { stringResource(R.string.applets_broken_reason, it) },
                         onSetup = onSetupTelegram,
                     )
                 }
@@ -62,7 +64,7 @@ fun ActiveAppletsScreen(onBack: () -> Unit, onSetupTelegram: () -> Unit) {
 }
 
 @Composable
-private fun ConnectorCard(applet: Applet, state: ConnectorState, details: String?, onSetup: () -> Unit) {
+private fun ConnectorCard(applet: Applet, state: ConnectorState, details: String?, problem: String?, onSetup: () -> Unit) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -76,6 +78,7 @@ private fun ConnectorCard(applet: Applet, state: ConnectorState, details: String
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (details != null) Text(details, style = MaterialTheme.typography.bodyMedium)
+            if (problem != null) Text(problem, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
             Button(onClick = onSetup) {
                 Text(stringResource(if (state == ConnectorState.NOT_CONFIGURED) R.string.applets_setup else R.string.applets_setup_again))
             }

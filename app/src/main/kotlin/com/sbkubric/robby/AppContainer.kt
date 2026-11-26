@@ -21,6 +21,8 @@ import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.applets.CallWatch
 import com.sbkubric.robby.core.applets.SystemApplet
 import com.sbkubric.robby.core.applets.TelegramApplet
+import com.sbkubric.robby.core.engine.ConnectorHealth
+import com.sbkubric.robby.core.engine.DeliverRuns
 import com.sbkubric.robby.core.engine.HandleEvent
 import com.sbkubric.robby.core.log.ActivityLog
 import com.sbkubric.robby.core.scenario.SaveScenario
@@ -29,6 +31,7 @@ import com.sbkubric.robby.core.scenario.ScenarioValidator
 import com.sbkubric.robby.data.RobbyDatabase
 import com.sbkubric.robby.data.RoomActivityLog
 import com.sbkubric.robby.data.RoomScenarioRepository
+import com.sbkubric.robby.service.DeliveryLoop
 import com.sbkubric.robby.service.ServiceLauncher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -77,16 +80,37 @@ class AppContainer(context: Context) {
     val handleEvent = HandleEvent(
         scenarios = scenarios,
         catalog = catalog,
-        performers = mapOf(
-            TelegramApplet.SEND to telegram.sendPerformer,
-            SystemApplet.NOTIFY to notifier.performer,
-        ),
         log = activityLog,
         deviceName = serverPhoneName,
         battery = StickyBatteryState(appContext),
         call = TelephonyCallState(appContext),
         clock = clock,
     )
+
+    /** The connectors' «Сломан», by connector (applet) id; Telegram is the only connector so far. */
+    private val connectorHealth = object : ConnectorHealth {
+        override fun brokenReason(connectorId: String): String? =
+            if (connectorId == TelegramApplet.ID) telegram.brokenReason.value else null
+
+        override suspend fun markBroken(connectorId: String, reason: String) {
+            if (connectorId == TelegramApplet.ID) telegram.markBroken(reason)
+        }
+    }
+
+    private val deliverRuns = DeliverRuns(
+        log = activityLog,
+        scenarios = scenarios,
+        catalog = catalog,
+        performers = mapOf(
+            TelegramApplet.SEND to telegram.sendPerformer,
+            SystemApplet.NOTIFY to notifier.performer,
+        ),
+        connectors = connectorHealth,
+        clock = clock,
+    )
+
+    /** Run by [com.sbkubric.robby.service.RobbyService]; anyone who records a run kicks it. */
+    val delivery = DeliveryLoop(appContext, deliverRuns, scenarios, serviceLauncher, clock)
 }
 
 /**

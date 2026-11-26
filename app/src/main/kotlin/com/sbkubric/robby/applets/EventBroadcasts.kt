@@ -3,19 +3,16 @@ package com.sbkubric.robby.applets
 import android.content.BroadcastReceiver
 import com.sbkubric.robby.AppContainer
 import com.sbkubric.robby.core.engine.Event
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import com.sbkubric.robby.core.log.RunStatus
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
 
 /**
  * Runs [prepare] (e.g. setting the next alarm) and hands the events it returns to the engine, from a broadcast receiver.
- *
- * Keeps the broadcast alive while the scenarios run, within the ~10 s the system allows a receiver:
- * the engine stops a run after RUN_LIMIT and logs it as timed out; BROADCAST_LIMIT is the backstop
- * that always lets finish() happen. A delivery queue in the service replaces this in slice 6.
+ * The engine only decides and records the runs, which takes no network, so the broadcast is kept alive just for that;
+ * delivery happens in the service ([com.sbkubric.robby.service.DeliveryLoop]). BROADCAST_LIMIT is the backstop that
+ * always lets finish() happen within the ~10 s the system allows a receiver.
  */
 fun BroadcastReceiver.handleEvents(container: AppContainer, prepare: suspend () -> List<Event>) {
     val pending = goAsync()
@@ -28,13 +25,10 @@ fun BroadcastReceiver.handleEvents(container: AppContainer, prepare: suspend () 
     }
 }
 
-/**
- * Runs the [events] through the engine side by side, each scenario's run within RUN_LIMIT
- * (so the activity log says «timed out» rather than nothing if an action hangs).
- */
+/** Records the runs of the [events], in order, and wakes delivery if any are to be performed. */
 suspend fun AppContainer.runEvents(events: List<Event>) {
-    coroutineScope { events.map { async { handleEvent(it, timeLimit = RUN_LIMIT) } }.awaitAll() }
+    val runs = events.flatMap { handleEvent(it) }
+    if (runs.any { it.status == RunStatus.PENDING }) delivery.kick()
 }
 
-private val RUN_LIMIT = 8.seconds
 private val BROADCAST_LIMIT = 9.seconds

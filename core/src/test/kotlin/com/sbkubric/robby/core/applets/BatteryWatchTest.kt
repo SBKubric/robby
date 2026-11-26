@@ -1,11 +1,10 @@
 package com.sbkubric.robby.core.applets
 
 import com.sbkubric.robby.core.FakeActivityLog
+import com.sbkubric.robby.core.texts
 import com.sbkubric.robby.core.FakeBatteryWatchStore
 import com.sbkubric.robby.core.FakeScenarioRepository
 import com.sbkubric.robby.core.applet.BatteryState
-import com.sbkubric.robby.core.engine.ActionPerformer
-import com.sbkubric.robby.core.engine.ActionResult
 import com.sbkubric.robby.core.engine.HandleEvent
 import com.sbkubric.robby.core.scenario.Action
 import com.sbkubric.robby.core.scenario.Scenario
@@ -196,7 +195,6 @@ class BatteryWatchTest {
         val engine = HandleEvent(
             scenarios = repository,
             catalog = BuiltInApplets.catalog,
-            performers = mapOf("telegram.send" to ActionPerformer { sent += it.getValue("text"); ActionResult.Done() }),
             log = FakeActivityLog(),
             deviceName = { "Pixel дома" },
             battery = { null },
@@ -208,7 +206,7 @@ class BatteryWatchTest {
         val readings = listOf(battery(23), battery(23, plugged = false), battery(22, plugged = false)) +
             (21 downTo 15).flatMap { listOf(battery(it, plugged = false), battery(it, plugged = false, temperature = 31.0)) } +
             listOf(battery(16, plugged = false), battery(18, plugged = false))
-        readings.forEach { reading -> watch.onReading(reading, now).forEach { engine(it) } }
+        readings.forEach { reading -> watch.onReading(reading, now).forEach { sent += engine(it).flatMap { run -> run.texts() } } }
 
         assertEquals(listOf("Зарядка отключена, 23 %", "Заряд 19 %"), sent)
     }

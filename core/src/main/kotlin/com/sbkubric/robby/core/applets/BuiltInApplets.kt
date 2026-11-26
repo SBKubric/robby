@@ -42,7 +42,7 @@ object TelegramApplet {
         id = ID,
         name = "Telegram",
         actions = listOf(
-            ActionSpec(SEND, "Отправить сообщение в группу", listOf(ParamSpec(TEXT, "Текст", ParamKind.TEMPLATE))),
+            ActionSpec(SEND, "Отправить сообщение в группу", listOf(ParamSpec(TEXT, "Текст", ParamKind.TEMPLATE)), messageParam = TEXT),
         ),
         isConnector = true,
     )

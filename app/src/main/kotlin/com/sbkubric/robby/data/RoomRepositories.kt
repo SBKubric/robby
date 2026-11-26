@@ -57,6 +57,7 @@ class RoomActivityLog(private val dao: RunDao) : ActivityLog {
         nextAttemptMillis = nextAttemptAt?.toEpochMilli(),
         late = late,
         notBeforeMillis = notBefore?.toEpochMilli(),
+        test = test,
     )
 
     private fun RunEntity.toRun() = Run(
@@ -72,6 +73,7 @@ class RoomActivityLog(private val dao: RunDao) : ActivityLog {
         nextAttemptAt = nextAttemptMillis?.let(Instant::ofEpochMilli),
         late = late,
         notBefore = notBeforeMillis?.let(Instant::ofEpochMilli),
+        test = test,
     )
 
     private companion object {

@@ -172,7 +172,7 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
             AddButton(stringResource(R.string.editor_add_condition)) { picker = PickerKind.CONDITION }
 
             SectionHeader(stringResource(R.string.editor_then), stringResource(R.string.editor_then_hint))
-            val variables = draft.trigger?.let { catalog.trigger(it.id) }?.variables.orEmpty() + CommonVariables.ALL
+            val variables = draft.trigger?.let { catalog.trigger(it.id) }?.variableNames.orEmpty() + CommonVariables.ALL
             draft.actions.forEachIndexed { index, action ->
                 val spec = catalog.action(action.id)
                 ElementCard(

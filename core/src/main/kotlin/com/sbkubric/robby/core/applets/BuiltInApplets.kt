@@ -7,6 +7,7 @@ import com.sbkubric.robby.core.applet.Filter
 import com.sbkubric.robby.core.applet.ParamKind
 import com.sbkubric.robby.core.applet.ParamSpec
 import com.sbkubric.robby.core.applet.TriggerSpec
+import com.sbkubric.robby.core.applet.Variable
 
 /** Incoming SMS. The Android receiver lives in `:app`. */
 object SmsApplet {
@@ -26,7 +27,7 @@ object SmsApplet {
                     ParamSpec("sender", "Отправитель (пусто — любой)", filter = Filter.Equals(SENDER)),
                     ParamSpec("text", "Текст содержит (пусто — любой)", filter = Filter.Contains(TEXT)),
                 ),
-                variables = listOf(SENDER, TEXT),
+                variables = listOf(Variable(SENDER, "900"), Variable(TEXT, "Код 1234. Никому не сообщайте его")),
             ),
         ),
     )

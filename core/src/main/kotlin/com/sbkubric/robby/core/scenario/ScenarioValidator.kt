@@ -45,7 +45,7 @@ class ScenarioValidator(private val catalog: AppletCatalog) {
         if (texts.any { it.isBlank() }) problems += ScenarioProblem.EmptyText
 
         val trigger = draft.trigger?.let { catalog.trigger(it.id) }
-        val available = trigger?.variables.orEmpty().toSet() + CommonVariables.ALL
+        val available = trigger?.variableNames.orEmpty().toSet() + CommonVariables.ALL
         val unavailable = texts.flatMap { Template.variablesIn(it) }.toSet() - available
         if (unavailable.isNotEmpty()) problems += ScenarioProblem.UnavailableVariables(unavailable)
 

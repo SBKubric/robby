@@ -23,8 +23,11 @@ data class TriggerSpec(
     val label: String,
     val params: List<ParamSpec> = emptyList(),
     /** Variables its events carry, e.g. `sms.sender`. */
-    val variables: List<String> = emptyList(),
+    val variables: List<Variable> = emptyList(),
 ) {
+    /** The names of its [variables], e.g. `sms.sender`. */
+    val variableNames: List<String> get() = variables.map { it.name }
+
     /** True if the event's [values] pass every filter param of the scenario's trigger [params]. */
     fun matches(params: Map<String, String>, values: Map<String, String>): Boolean =
         this.params.all { spec ->
@@ -33,6 +36,12 @@ data class TriggerSpec(
             wanted.isEmpty() || filter.variables.any { filter.passes(wanted, values[it].orEmpty()) }
         }
 }
+
+/**
+ * A named value of a trigger's event, used in templates as `{sms.sender}`.
+ * [sample] is what «Тест» puts in its place: a value such an event could carry, e.g. `900`.
+ */
+data class Variable(val name: String, val sample: String)
 
 /**
  * A condition an applet offers, e.g. `system.window`: a check of the server phone's state at the time of the event,

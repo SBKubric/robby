@@ -8,6 +8,7 @@ import com.sbkubric.robby.core.applet.ParamKind
 import com.sbkubric.robby.core.applet.ParamSpec
 import com.sbkubric.robby.core.applet.ParamValues
 import com.sbkubric.robby.core.applet.TriggerSpec
+import com.sbkubric.robby.core.applet.Variable
 import java.util.Locale
 
 /**
@@ -39,7 +40,7 @@ object BatteryApplet {
     /** The threshold an event crossed; it selects the scenarios with that threshold, templates do not offer it. */
     const val THRESHOLD = "battery.threshold"
 
-    private val variables = listOf(LEVEL, TEMPERATURE)
+    private val variables = listOf(Variable(LEVEL, "15"), Variable(TEMPERATURE, "41,2"))
     private val percent = 1..99
 
     private fun levelParam(default: Int, filter: Filter? = null) =

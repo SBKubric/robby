@@ -54,7 +54,7 @@ class FakeActivityLog : ActivityLog {
     override suspend fun lastExecuted(scenarioId: String): Run? {
         yield()
         return runs.value
-            .filter { it.scenarioId == scenarioId && it.status != RunStatus.SKIPPED && it.status != RunStatus.CANCELLED }
+            .filter { it.scenarioId == scenarioId && it.status != RunStatus.SKIPPED && it.status != RunStatus.CANCELLED && !it.test }
             .maxByOrNull { it.time }
     }
 

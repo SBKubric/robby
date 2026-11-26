@@ -6,6 +6,7 @@ import com.sbkubric.robby.core.applet.ConditionSpec
 import com.sbkubric.robby.core.applet.Filter
 import com.sbkubric.robby.core.applet.ParamSpec
 import com.sbkubric.robby.core.applet.TriggerSpec
+import com.sbkubric.robby.core.applet.Variable
 
 /**
  * «Звонок»: incoming and missed calls of the server phone, and whether a call is going on.
@@ -27,7 +28,7 @@ object CallApplet {
     /** Param key. */
     const val P_CALLER = "caller"
 
-    private val variables = listOf(NUMBER, CONTACT)
+    private val variables = listOf(Variable(NUMBER, "+7 900 123-45-67"), Variable(CONTACT, "Иван Петров"))
 
     private val caller = ParamSpec(P_CALLER, "Номер или контакт (пусто — любой)", filter = Filter.Equals(NUMBER, or = CONTACT))
 

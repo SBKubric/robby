@@ -99,7 +99,7 @@ fun CatalogPicker(
                                     if (spec.variables.isEmpty()) {
                                         stringResource(R.string.picker_no_variables)
                                     } else {
-                                        spec.variables.joinToString(" ") { "{$it}" }
+                                        spec.variableNames.joinToString(" ") { "{$it}" }
                                     },
                                 )
                             },

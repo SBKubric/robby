@@ -30,7 +30,8 @@ import java.time.Instant
  * - **Permanent failure** ([ActionResult.Failed]): the run fails. [ActionResult.Broken] also marks its connector
  *   «Сломан», and then every run that needs that connector fails at once instead of waiting.
  * - **Late**: a message performed more than [LateMark.THRESHOLD] after its event gets «⏱ HH:MM» of the event.
- * - **Cancelled**: a waiting run whose scenario has been switched off or deleted is not performed.
+ * - **Cancelled**: a waiting run whose scenario has been switched off or deleted is not performed (a test run is,
+ *   as «Тест» works on the editor's draft).
  */
 class DeliverRuns(
     private val log: ActivityLog,
@@ -56,12 +57,12 @@ class DeliverRuns(
             .minOrNull()
     }
 
-    /** Cancels the runs whose scenario is switched off or gone; returns the others. */
+    /** Cancels the runs whose scenario is switched off or gone; returns the others. A test run is never cancelled so. */
     private suspend fun withoutCancelled(pending: List<Run>): List<Run> {
         if (pending.isEmpty()) return pending
         val current = scenarios.all().associateBy { it.id }
         return pending.filter { run ->
-            val reason = when (current[run.scenarioId]?.enabled) {
+            val reason = if (run.test) null else when (current[run.scenarioId]?.enabled) {
                 null -> RunReason.SCENARIO_DELETED
                 false -> RunReason.SCENARIO_DISABLED
                 true -> null

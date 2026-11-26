@@ -7,6 +7,7 @@ import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunAction
 import com.sbkubric.robby.core.log.RunReason
 import com.sbkubric.robby.core.log.RunStatus
+import com.sbkubric.robby.core.scenario.Action
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.ScenarioRepository
 import com.sbkubric.robby.core.template.CommonVariables
@@ -15,7 +16,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Duration
-import java.time.format.DateTimeFormatter
 
 /**
  * The engine's decision: an event runs every enabled scenario whose trigger it matches and whose filters it passes.
@@ -46,12 +46,12 @@ class HandleEvent(
         if (matching.isEmpty()) return emptyList()
 
         val state = ServerPhoneState(time = event.time.atZone(clock.zone), battery = battery.batteryState(), call = call.callState())
-        val values = event.values + mapOf(
-            CommonVariables.NOW to TIME_FORMAT.format(state.time),
-            CommonVariables.DEVICE to deviceName.deviceName(),
-        )
+        val values = event.values + CommonVariables.values(state.time, deviceName.deviceName())
         val runs = matching.map { scenario ->
-            log.add(skippedRun(scenario, event, state) ?: scenario.run(event, RunStatus.PENDING, actions = snapshot(scenario, values)))
+            log.add(
+                skippedRun(scenario, event, state)
+                    ?: scenario.run(event, RunStatus.PENDING, actions = catalog.snapshot(scenario.actions, values)),
+            )
         }
         log.prune(olderThan = clock.instant().minus(LOG_MAX_AGE), keepNewest = LOG_MAX_RUNS)
         return runs
@@ -71,13 +71,6 @@ class HandleEvent(
         return null
     }
 
-    /** The scenario's actions as they are now, their template params rendered: what delivery will perform. */
-    private fun snapshot(scenario: Scenario, values: Map<String, String>): List<RunAction> =
-        scenario.actions.map { action ->
-            val templates = catalog.action(action.id)?.params.orEmpty().filter { it.isTemplate }.map { it.key }.toSet()
-            RunAction(action.id, action.params.mapValues { (key, value) -> if (key in templates) Template.render(value, values) else value })
-        }
-
     private fun Scenario.run(
         event: Event,
         status: RunStatus,
@@ -90,7 +83,12 @@ class HandleEvent(
         /** The activity log keeps 30 days of runs, but no more than 2000. */
         val LOG_MAX_AGE: Duration = Duration.ofDays(30)
         const val LOG_MAX_RUNS = 2000
-
-        private val TIME_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
     }
 }
+
+/** The [actions] as they are now, their template params rendered with [values]: what delivery will perform. */
+internal fun AppletCatalog.snapshot(actions: List<Action>, values: Map<String, String>): List<RunAction> =
+    actions.map { action ->
+        val templates = action(action.id)?.params.orEmpty().filter { it.isTemplate }.map { it.key }.toSet()
+        RunAction(action.id, action.params.mapValues { (key, value) -> if (key in templates) Template.render(value, values) else value })
+    }

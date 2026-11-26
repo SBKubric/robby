@@ -4,46 +4,42 @@ import com.sbkubric.robby.core.applet.AppletCatalog
 import com.sbkubric.robby.core.applet.ServerPhoneState
 import com.sbkubric.robby.core.log.ActivityLog
 import com.sbkubric.robby.core.log.Run
+import com.sbkubric.robby.core.log.RunAction
 import com.sbkubric.robby.core.log.RunReason
 import com.sbkubric.robby.core.log.RunStatus
-import com.sbkubric.robby.core.scenario.Action
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.ScenarioRepository
 import com.sbkubric.robby.core.template.CommonVariables
 import com.sbkubric.robby.core.template.Template
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Duration
 import java.time.format.DateTimeFormatter
-import kotlin.time.Duration as TimeLimit
 
 /**
- * The engine: an event runs every enabled scenario whose trigger it matches and whose filters it passes.
+ * The engine's decision: an event runs every enabled scenario whose trigger it matches and whose filters it passes.
  * Each such scenario becomes a [Run]: a condition that is not met, or the scenario's pause, skips it;
- * otherwise its actions are performed in order and the first failure stops it.
+ * otherwise it is recorded as [RunStatus.PENDING] with a snapshot of its actions, rendered with the event's variables,
+ * for [DeliverRuns] to perform. Nothing here waits for the network, so a broadcast receiver can call it directly.
  * Every run goes to the activity log, skipped ones too; filtered-out events are not logged.
  */
 class HandleEvent(
     private val scenarios: ScenarioRepository,
     private val catalog: AppletCatalog,
-    /** Action performers by action id. */
-    private val performers: Map<String, ActionPerformer>,
     private val log: ActivityLog,
     private val deviceName: DeviceNameProvider,
     private val battery: BatteryStateProvider,
     private val call: CallStateProvider,
     private val clock: Clock,
 ) {
-    /**
-     * Matching scenarios run side by side, each within [timeLimit]: a run that does not finish in time
-     * is stopped and logged as [RunReason.TIMED_OUT], so the log stays truthful when the caller's time is short
-     * (a broadcast receiver has about 10 s).
-     */
-    suspend operator fun invoke(event: Event, timeLimit: TimeLimit = TimeLimit.INFINITE): List<Run> {
+    // The pause looks at the log and the run is added to it: one decision at a time, so two events at once cannot both pass.
+    private val deciding = Mutex()
+
+    /** Returns the recorded runs, with their ids. */
+    suspend operator fun invoke(event: Event): List<Run> = deciding.withLock { decide(event) }
+
+    private suspend fun decide(event: Event): List<Run> {
         val trigger = catalog.trigger(event.triggerId) ?: return emptyList()
         val matching = scenarios.all()
             .filter { it.enabled && it.trigger.id == event.triggerId && trigger.matches(it.trigger.params, event.values) }
@@ -54,15 +50,9 @@ class HandleEvent(
             CommonVariables.NOW to TIME_FORMAT.format(state.time),
             CommonVariables.DEVICE to deviceName.deviceName(),
         )
-        val runs = coroutineScope {
-            matching.map { scenario ->
-                async {
-                    withTimeoutOrNull(timeLimit) { skippedRun(scenario, event, state) ?: run(scenario, event, values) }
-                        ?: scenario.run(event, RunStatus.FAILED, null, RunReason.TIMED_OUT)
-                }
-            }.awaitAll()
+        val runs = matching.map { scenario ->
+            log.add(skippedRun(scenario, event, state) ?: scenario.run(event, RunStatus.PENDING, actions = snapshot(scenario, values)))
         }
-        runs.forEach { log.add(it) }
         log.prune(olderThan = clock.instant().minus(LOG_MAX_AGE), keepNewest = LOG_MAX_RUNS)
         return runs
     }
@@ -81,33 +71,20 @@ class HandleEvent(
         return null
     }
 
-    private suspend fun run(scenario: Scenario, event: Event, values: Map<String, String>): Run {
-        val notes = mutableListOf<String>()
-        for (action in scenario.actions) {
-            val performer = performers[action.id]
-                ?: return scenario.run(event, RunStatus.FAILED, action.id, RunReason.NO_PERFORMER)
-            when (val result = perform(performer, action, values)) {
-                is ActionResult.Done -> result.note?.let { notes += it }
-                is ActionResult.Failed -> return scenario.run(event, RunStatus.FAILED, result.reason, null)
-            }
+    /** The scenario's actions as they are now, their template params rendered: what delivery will perform. */
+    private fun snapshot(scenario: Scenario, values: Map<String, String>): List<RunAction> =
+        scenario.actions.map { action ->
+            val templates = catalog.action(action.id)?.params.orEmpty().filter { it.isTemplate }.map { it.key }.toSet()
+            RunAction(action.id, action.params.mapValues { (key, value) -> if (key in templates) Template.render(value, values) else value })
         }
-        return scenario.run(event, RunStatus.DONE, notes.joinToString("; ").ifEmpty { null }, null)
-    }
 
-    private suspend fun perform(performer: ActionPerformer, action: Action, values: Map<String, String>): ActionResult {
-        val templates = catalog.action(action.id)?.params.orEmpty().filter { it.isTemplate }.map { it.key }.toSet()
-        val params = action.params.mapValues { (key, value) -> if (key in templates) Template.render(value, values) else value }
-        return try {
-            performer.perform(params)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            ActionResult.Failed(e.message ?: e.javaClass.simpleName)
-        }
-    }
-
-    private fun Scenario.run(event: Event, status: RunStatus, message: String?, reason: RunReason?) =
-        Run(id, name, event.time, status, message, reason)
+    private fun Scenario.run(
+        event: Event,
+        status: RunStatus,
+        message: String? = null,
+        reason: RunReason? = null,
+        actions: List<RunAction> = emptyList(),
+    ) = Run(id, name, event.time, status, message, reason, actions = actions)
 
     companion object {
         /** The activity log keeps 30 days of runs, but no more than 2000. */

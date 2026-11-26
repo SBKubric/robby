@@ -13,23 +13,36 @@ import com.sbkubric.robby.MainActivity
 import com.sbkubric.robby.R
 import com.sbkubric.robby.appContainer
 import com.sbkubric.robby.applets.battery.BatteryReceiver
+import com.sbkubric.robby.core.applets.TelegramApplet
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * The always-on foreground service that keeps Robby alive on the server phone.
- * Event sources that the system delivers only to a running process are registered while it runs (the battery).
+ * Event sources that the system delivers only to a running process are registered while it runs (the battery);
+ * it runs the delivery of recorded runs ([DeliveryLoop]) and shows «Telegram сломан» while the connector is broken.
  */
 class RobbyService : Service() {
 
     private var battery: BatteryReceiver? = null
+    private var brokenAlert: Job? = null
 
     override fun onCreate() {
         super.onCreate()
-        battery = BatteryReceiver(appContainer).also { it.register(this) }
+        val container = appContainer
+        battery = BatteryReceiver(container).also { it.register(this) }
+        container.delivery.start(container.appScope)
+        val alert = BrokenConnectorAlert(this)
+        val telegram = container.catalog.applets.first { it.id == TelegramApplet.ID }.name
+        brokenAlert = container.appScope.launch { container.telegram.brokenReason.collect { alert.update(telegram, it) } }
     }
 
     override fun onDestroy() {
         battery?.unregister(this)
         battery = null
+        appContainer.delivery.stop()
+        brokenAlert?.cancel()
+        brokenAlert = null
         super.onDestroy()
     }
 

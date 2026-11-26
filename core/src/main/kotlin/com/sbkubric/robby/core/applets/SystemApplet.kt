@@ -89,6 +89,7 @@ object SystemApplet {
                     ParamSpec(P_TITLE, "Заголовок", ParamKind.TEMPLATE),
                     ParamSpec(P_TEXT, "Текст", ParamKind.TEMPLATE),
                 ),
+                messageParam = P_TEXT,
             ),
         ),
     )

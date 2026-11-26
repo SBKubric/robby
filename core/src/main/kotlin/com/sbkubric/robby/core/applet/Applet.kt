@@ -93,6 +93,8 @@ data class ActionSpec(
     val id: String,
     val label: String,
     val params: List<ParamSpec> = emptyList(),
+    /** The template param that carries the message: a late delivery puts «⏱ HH:MM» of the event before it. */
+    val messageParam: String? = null,
 )
 
 /** A parameter of a trigger, condition or action; its value is stored as text. */

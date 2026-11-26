@@ -1,9 +1,8 @@
 package com.sbkubric.robby.core.applets
 
 import com.sbkubric.robby.core.FakeActivityLog
+import com.sbkubric.robby.core.texts
 import com.sbkubric.robby.core.FakeScenarioRepository
-import com.sbkubric.robby.core.engine.ActionPerformer
-import com.sbkubric.robby.core.engine.ActionResult
 import com.sbkubric.robby.core.engine.Event
 import com.sbkubric.robby.core.engine.HandleEvent
 import com.sbkubric.robby.core.scenario.Action
@@ -115,7 +114,6 @@ class SystemScheduleTest {
         val engine = HandleEvent(
             scenarios = FakeScenarioRepository(*scenarios.toTypedArray()),
             catalog = BuiltInApplets.catalog,
-            performers = mapOf("telegram.send" to ActionPerformer { sent += it.getValue("text"); ActionResult.Done() }),
             log = FakeActivityLog(),
             deviceName = { "Pixel дома" },
             battery = { null },
@@ -124,6 +122,7 @@ class SystemScheduleTest {
         )
 
         val runs = fire.events.flatMap { engine(it) }
+        sent += runs.flatMap { it.texts() }
 
         assertEquals(listOf("pulse"), runs.map { it.scenarioId })
         assertEquals(listOf("Pixel дома на связи, 26.11.2026 09:00"), sent)

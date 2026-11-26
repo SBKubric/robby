@@ -143,7 +143,7 @@ class TelegramSetupViewModel(
                     connector.save(result.settings)
                     done = true
                 }
-                is TelegramConnector.SendResult.Failed -> testError = result.reason
+                is TelegramConnector.SendResult.Failed -> testError = result.problem.reason
             }
             sending = false
         }

@@ -9,6 +9,7 @@ import com.sbkubric.robby.core.applets.SystemSchedule
 import com.sbkubric.robby.core.engine.Event
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.ScenarioRepository
+import com.sbkubric.robby.service.wakeAt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -56,10 +57,7 @@ class ScheduleAlarms(
             return
         }
         val at = fire.time.toEpochMilli()
-        val intent = pendingIntent(at)
-        // The permission can be revoked between the check and the call: then the alarm is inexact.
-        val exact = canBeExact() && runCatching { alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent) }.isSuccess
-        if (!exact) alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+        val exact = alarms.wakeAt(at, pendingIntent(at))
         Log.i("Robby", "Next schedule at ${fire.time} (exact: $exact)")
     }
 

@@ -12,6 +12,9 @@
     <!-- Optional: the caller's contact name for {call.contact}. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Delivery: retry as soon as the network is back, and keep the CPU awake while sending. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- «Будильники и напоминания»: the schedule trigger rings on time; the user may deny it (then alarms are inexact). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
@@ -64,6 +67,11 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- The alarm for the next delivery attempt (an explicit PendingIntent). -->
+        <receiver
+            android:name=".service.DeliveryAlarmReceiver"
+            android:exported="false" />
 
         <!-- Exported for the system's SMS broadcast; BROADCAST_SMS lets only the system send it. -->
         <receiver

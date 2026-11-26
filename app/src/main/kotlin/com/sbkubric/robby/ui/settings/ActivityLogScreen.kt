@@ -49,7 +49,7 @@ fun ActivityLogScreen(onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(formatRunTime(run.time), style = MaterialTheme.typography.labelLarge)
                         Text(run.scenarioName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        StatusBadge(runStatusLabel(run.status), runTone(run.status))
+                        StatusBadge(runStatusLabel(run), runTone(run.status))
                     }
                     runMessage(run, container.catalog)?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

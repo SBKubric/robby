@@ -39,9 +39,9 @@ class ScenarioValidatorTest {
     @Test
     fun `trigger or action missing from the catalog blocks saving`() {
         val problems = validator.validate(
-            ScenarioDraft(name = "Старый", trigger = Trigger("call.missed"), actions = listOf(Action("module.bridge"))),
+            ScenarioDraft(name = "Старый", trigger = Trigger("module.connected"), actions = listOf(Action("module.bridge"))),
         )
-        assertEquals(listOf(ScenarioProblem.UnknownElements(setOf("call.missed", "module.bridge"))), problems)
+        assertEquals(listOf(ScenarioProblem.UnknownElements(setOf("module.connected", "module.bridge"))), problems)
     }
 
     @Test

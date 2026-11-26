@@ -1,6 +1,7 @@
 package com.sbkubric.robby.core.engine
 
 import com.sbkubric.robby.core.applet.BatteryState
+import com.sbkubric.robby.core.applet.CallState
 import java.time.Instant
 
 /** Something a trigger reported: its id, the values of its variables (e.g. `sms.sender`) and when it happened. */
@@ -26,4 +27,14 @@ fun interface DeviceNameProvider {
 /** Port: the server phone's battery now, for conditions; `null` if the phone does not report it. */
 fun interface BatteryStateProvider {
     fun batteryState(): BatteryState?
+}
+
+/** Port: the server phone's calls now, for conditions; `null` if the phone does not report them. */
+fun interface CallStateProvider {
+    fun callState(): CallState?
+}
+
+/** Port: the name of the contact with this phone [number]; `null` if there is none or the contacts cannot be read. */
+fun interface ContactNames {
+    fun nameOf(number: String): String?
 }

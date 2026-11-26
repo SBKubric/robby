@@ -3,6 +3,7 @@ package com.sbkubric.robby.core.engine
 import com.sbkubric.robby.core.FakeActivityLog
 import com.sbkubric.robby.core.FakeScenarioRepository
 import com.sbkubric.robby.core.applet.BatteryState
+import com.sbkubric.robby.core.applet.CallState
 import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunReason
@@ -26,6 +27,7 @@ class HandleEventTest {
     private val now = Instant.parse("2026-11-26T11:02:00Z")
     private val log = FakeActivityLog()
     private var battery: BatteryState? = BatteryState(level = 64, temperature = 31.5, plugged = true)
+    private var call: CallState? = CallState.IDLE
     private val sent = mutableListOf<String>()
     private val telegram = ActionPerformer { params ->
         sent += params.getValue("text")
@@ -54,6 +56,7 @@ class HandleEventTest {
             log = log,
             deviceName = { "Pixel дома" },
             battery = { battery },
+            call = { call },
             clock = Clock.fixed(now, ZoneId.of("Europe/Moscow")),
         )
 
@@ -340,5 +343,17 @@ class HandleEventTest {
         ).invoke(sms("900"))
 
         assertEquals(listOf("battery" to RunStatus.SKIPPED, "time" to RunStatus.DONE), runs.map { it.scenarioId to it.status })
+    }
+
+    @Test
+    fun `call condition sees the call state at the time of the event`() = runBlocking {
+        val engine = engine(smsScenario().copy(conditions = listOf(Condition("call.active"))))
+
+        call = CallState.OFFHOOK
+        val during = engine(sms("900"))
+        call = CallState.IDLE
+        val after = engine(sms("900"))
+
+        assertEquals(listOf(RunStatus.DONE, RunStatus.SKIPPED), (during + after).map { it.status })
     }
 }

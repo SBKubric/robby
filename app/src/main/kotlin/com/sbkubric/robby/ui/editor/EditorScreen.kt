@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -283,8 +285,9 @@ private fun ParamField(param: ParamSpec, value: String, variables: List<String>,
     when (param.kind) {
         ParamKind.TEMPLATE -> TemplateField(param.label, value, variables, onChange)
         ParamKind.WEEKDAYS -> WeekdaysField(param.label, value, onChange)
-        ParamKind.TEXT, ParamKind.TIME -> {
-            val invalid = !param.kind.isValid(value)
+        ParamKind.TEXT, ParamKind.TIME, ParamKind.NUMBER -> {
+            val invalid = !param.isValid(value)
+            val number = param.kind == ParamKind.NUMBER
             OutlinedTextField(
                 value = value,
                 onValueChange = onChange,
@@ -292,10 +295,21 @@ private fun ParamField(param: ParamSpec, value: String, variables: List<String>,
                 singleLine = true,
                 isError = invalid,
                 supportingText = if (invalid) {
-                    { Text(stringResource(R.string.editor_time_invalid)) }
+                    {
+                        val range = param.range ?: 0..999
+                        Text(
+                            if (number) {
+                                stringResource(R.string.editor_number_invalid, range.first, range.last)
+                            } else {
+                                stringResource(R.string.editor_time_invalid)
+                            },
+                        )
+                    }
                 } else {
                     null
                 },
+                suffix = param.unit?.let { unit -> { Text(unit) } },
+                keyboardOptions = if (number) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

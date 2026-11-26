@@ -36,6 +36,7 @@
     <string name="editor_pause">Пауза</string>
     <string name="editor_pause_hint">повторные срабатывания пропускаются</string>
     <string name="editor_time_invalid">Время в виде ЧЧ:ММ, например 09:00</string>
+    <string name="editor_number_invalid">Целое число от %1$d до %2$d</string>
     <string name="editor_days_empty">Выберите хотя бы один день</string>
     <string name="editor_then">То</string>
     <string name="editor_then_hint">действия по порядку</string>

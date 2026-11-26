@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Robby</string>
+
+    <string name="tab_scenarios">Сценарии</string>
+    <string name="tab_settings">Настройки</string>
+
+    <string name="scenarios_empty">Сценариев пока нет</string>
+
+    <string name="service_channel_name">Работа Robby</string>
+    <string name="service_channel_description">Постоянное уведомление: Robby работает в фоне и ждёт событий</string>
+    <string name="service_notification_title">Robby работает</string>
+    <string name="service_notification_text">Ждёт событий для сценариев</string>
+</resources>

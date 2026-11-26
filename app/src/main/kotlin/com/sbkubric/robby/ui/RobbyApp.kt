@@ -1,0 +1,56 @@
+package com.sbkubric.robby.ui
+
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.sbkubric.robby.R
+import com.sbkubric.robby.ui.scenarios.ScenariosScreen
+import com.sbkubric.robby.ui.settings.SettingsScreen
+import com.sbkubric.robby.ui.theme.RobbyTheme
+
+private enum class Tab(@StringRes val label: Int, val icon: ImageVector) {
+    Scenarios(R.string.tab_scenarios, Icons.AutoMirrored.Filled.List),
+    Settings(R.string.tab_settings, Icons.Filled.Settings),
+}
+
+@Composable
+fun RobbyApp() {
+    RobbyTheme {
+        var current by rememberSaveable { mutableStateOf(Tab.Scenarios) }
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    Tab.entries.forEach { tab ->
+                        NavigationBarItem(
+                            selected = tab == current,
+                            onClick = { current = tab },
+                            icon = { Icon(tab.icon, contentDescription = null) },
+                            label = { Text(stringResource(tab.label)) },
+                        )
+                    }
+                }
+            },
+        ) { padding ->
+            val modifier = Modifier.padding(padding)
+            when (current) {
+                Tab.Scenarios -> ScenariosScreen(modifier)
+                Tab.Settings -> SettingsScreen(modifier)
+            }
+        }
+    }
+}

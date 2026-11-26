@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 java {
@@ -16,5 +17,9 @@ kotlin {
 }
 
 dependencies {
+    // Ports expose Flow and the scenario JSON format is kotlinx.serialization: both are pure Kotlin.
+    api(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.serialization.json)
+
     testImplementation(libs.kotlin.test.junit)
 }

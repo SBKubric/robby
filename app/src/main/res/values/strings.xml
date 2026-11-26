@@ -4,8 +4,115 @@
 
     <string name="tab_scenarios">Сценарии</string>
     <string name="tab_settings">Настройки</string>
+    <string name="back">Назад</string>
 
-    <string name="scenarios_empty">Сценариев пока нет</string>
+    <!-- Scenario list -->
+    <string name="scenarios_empty">Сценариев пока нет. Нажмите «+ Сценарий», чтобы создать первый.</string>
+    <string name="scenarios_add">Сценарий</string>
+    <string name="scenario_last_run">Последнее: %1$s · %2$s</string>
+    <string name="scenario_never_ran">Ещё не срабатывал</string>
+    <string name="scenario_switch">Включён</string>
+
+    <!-- Run statuses -->
+    <string name="run_done">выполнено</string>
+    <string name="run_failed">ошибка</string>
+    <string name="run_error_no_performer">Действие %1$s недоступно в этой версии Robby</string>
+    <string name="run_error_timed_out">Не успело за отведённое время</string>
+
+    <!-- Editor -->
+    <string name="editor_title_new">Новый сценарий</string>
+    <string name="editor_title_edit">Сценарий</string>
+    <string name="editor_save">Сохранить</string>
+    <string name="editor_delete">Удалить сценарий</string>
+    <string name="editor_name">Название</string>
+    <string name="editor_when">Когда</string>
+    <string name="editor_when_hint">один триггер</string>
+    <string name="editor_then">То</string>
+    <string name="editor_then_hint">действия по порядку</string>
+    <string name="editor_pick_trigger">+ Выбрать триггер</string>
+    <string name="editor_add_action">+ Действие</string>
+    <string name="editor_replace">Заменить</string>
+    <string name="editor_remove">Убрать</string>
+    <string name="editor_variables">Вставить переменную:</string>
+    <string name="editor_unknown_element">Нет в этой версии: %1$s</string>
+    <string name="editor_delete_title">Удалить сценарий?</string>
+    <string name="editor_delete_text">Записи о его срабатываниях останутся в Журнале активности.</string>
+    <string name="editor_delete_confirm">Удалить</string>
+    <string name="editor_cancel">Отмена</string>
+
+    <string name="problem_no_name">Введите название сценария.</string>
+    <string name="problem_no_trigger">Выберите триггер: без него сценарий не знает, когда срабатывать.</string>
+    <string name="problem_no_actions">Добавьте хотя бы одно действие.</string>
+    <string name="problem_empty_text">У действия пустой текст.</string>
+    <string name="problem_unknown">Этих элементов нет в приложении: %1$s. Уберите их.</string>
+    <string name="problem_variables">Переменные %1$s недоступны для триггера «%2$s». Уберите их или выберите другой триггер.</string>
+
+    <string name="permission_hint">Без разрешения на получение SMS этот сценарий не сработает.</string>
+    <string name="permission_hint_restricted">Если Android не даёт разрешить: «О приложении» → ⋮ → «Разрешить настройки с ограниченным доступом», затем повторите.</string>
+    <string name="permission_request">Разрешить</string>
+    <string name="permission_open_settings">О приложении</string>
+
+    <!-- Catalog picker -->
+    <string name="picker_trigger_title">Какой апплет даст триггер?</string>
+    <string name="picker_action_title">Какой апплет выполнит действие?</string>
+    <string name="picker_triggers_count">Триггеров: %1$d</string>
+    <string name="picker_actions_count">Действий: %1$d</string>
+    <string name="picker_connector">коннектор</string>
+    <string name="picker_no_variables">без своих переменных</string>
+
+    <!-- Settings -->
+    <string name="settings_applets">Активные апплеты</string>
+    <string name="settings_applets_summary">Telegram: %1$s</string>
+    <string name="settings_log">Журнал активности</string>
+    <string name="settings_log_summary">Последнее: %1$s · %2$s</string>
+    <string name="settings_log_empty">Пока пусто</string>
+
+    <!-- Connector states -->
+    <string name="connector_not_configured">не настроен</string>
+    <string name="connector_working">работает</string>
+    <string name="connector_broken">сломан</string>
+
+    <!-- Active applets -->
+    <string name="applets_intro">Здесь только апплеты, которым нужна настройка. Остальные работают без неё и видны в редакторе сценария.</string>
+    <string name="applets_connector">Коннектор</string>
+    <string name="applets_actions">Действия: %1$s</string>
+    <string name="applets_telegram_details">Бот @%1$s пишет в «%2$s»</string>
+    <string name="applets_setup">Настроить</string>
+    <string name="applets_setup_again">Настроить заново</string>
+
+    <!-- Telegram wizard -->
+    <string name="tg_title">Настройка Telegram</string>
+    <string name="tg_step_token">1. Токен бота</string>
+    <string name="tg_step_token_text">Создайте бота у @BotFather командой /newbot и вставьте его токен. Токен хранится только на этом телефоне.</string>
+    <string name="tg_token">Токен</string>
+    <string name="tg_check">Проверить</string>
+    <string name="tg_checking">Проверяю…</string>
+    <string name="tg_bot_found">Найден бот @%1$s</string>
+    <string name="tg_token_format">Токен выглядит так: 123456789:AAE… Скопируйте его из сообщения @BotFather целиком.</string>
+    <string name="tg_token_rejected">Telegram не принял токен. Проверьте его или выпустите новый командой /token у @BotFather.</string>
+    <string name="tg_step_group">2. Добавьте бота в группу</string>
+    <string name="tg_step_group_text">Откройте ссылку там, где есть Telegram, и выберите группу. Robby сам её найдёт. Если бот уже в группе, отправьте в ней команду из ссылки: /start@бот и код после «startgroup=».</string>
+    <string name="tg_open_link">Открыть ссылку</string>
+    <string name="tg_waiting">Жду, пока бота добавят в группу…</string>
+    <string name="tg_group_found">Найдена группа «%1$s»</string>
+    <string name="tg_group_timeout">Группа не найдена. Проверьте, что бота добавили по этой ссылке, и нажмите «Искать снова».</string>
+    <string name="tg_search_again">Искать снова</string>
+    <string name="tg_step_test">3. Проверка</string>
+    <string name="tg_send_test">Отправить тестовое сообщение</string>
+    <string name="tg_sending">Отправляю…</string>
+    <string name="tg_test_message">Robby на связи: сообщения сценариев будут приходить в эту группу.</string>
+    <string name="tg_done">Готово: сообщение отправлено, Telegram работает.</string>
+    <string name="tg_finish">Готово</string>
+
+    <!-- Telegram connector messages (activity log and wizard) -->
+    <string name="telegram_not_configured">Telegram не настроен</string>
+    <string name="telegram_delivered">Доставлено в «%1$s»</string>
+    <string name="telegram_error">Telegram: %1$s</string>
+    <string name="telegram_network_error">Нет связи с Telegram: %1$s</string>
+
+    <!-- Activity log -->
+    <string name="log_intro">Срабатывания за 30 дней, не больше 2000 записей. События, не прошедшие фильтр, сюда не пишутся.</string>
+    <string name="log_empty">Срабатываний пока не было.</string>
 
     <string name="service_channel_name">Работа Robby</string>
     <string name="service_channel_description">Постоянное уведомление: Robby работает в фоне и ждёт событий</string>

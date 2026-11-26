@@ -45,4 +45,13 @@ class SaveScenarioTest {
         assertEquals(SaveScenario.Result.Invalid(listOf(ScenarioProblem.NoActions)), result)
         assertEquals(emptyList(), repository.all())
     }
+
+    @Test
+    fun `conditions and the pause are stored with the scenario`() = runBlocking {
+        val conditions = listOf(Condition("system.window", mapOf("from" to "22:00", "to" to "08:00")))
+
+        save(draft.copy(conditions = conditions, cooldownMinutes = 60))
+
+        assertEquals(listOf(conditions to 60), repository.all().map { it.conditions to it.cooldownMinutes })
+    }
 }

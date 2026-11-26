@@ -1,7 +1,9 @@
 package com.sbkubric.robby.core.applet
 
+import java.time.ZonedDateTime
+
 /**
- * A built-in module that offers triggers and actions to scenarios (ADR 0001).
+ * A built-in module that offers triggers, conditions and actions to scenarios (ADR 0001).
  * Ids are part of the stored scenario format and never change.
  * Labels are the Russian UI text: the catalog is domain data, and `:core` cannot see Android resources.
  */
@@ -9,6 +11,7 @@ data class Applet(
     val id: String,
     val name: String,
     val triggers: List<TriggerSpec> = emptyList(),
+    val conditions: List<ConditionSpec> = emptyList(),
     val actions: List<ActionSpec> = emptyList(),
     /** A connector needs an external account and its own setup («Активные апплеты»). */
     val isConnector: Boolean = false,
@@ -31,6 +34,34 @@ data class TriggerSpec(
         }
 }
 
+/**
+ * A condition an applet offers, e.g. `system.window`: a check of the server phone's state at the time of the event,
+ * not of the event itself.
+ */
+data class ConditionSpec(
+    val id: String,
+    val label: String,
+    val params: List<ParamSpec> = emptyList(),
+    private val check: ConditionCheck,
+) {
+    /** True if the phone's [state] passes the condition with the scenario's [params]. */
+    fun isMet(params: Map<String, String>, state: ServerPhoneState): Boolean = check.isMet(params, state)
+}
+
+/** How a condition judges the phone's state; unreadable params mean the condition is not met. */
+fun interface ConditionCheck {
+    fun isMet(params: Map<String, String>, state: ServerPhoneState): Boolean
+}
+
+/**
+ * What conditions can see of the server phone, taken once per event.
+ * Later slices add fields read through their own ports (e.g. battery level and charging for the Battery applet).
+ */
+data class ServerPhoneState(
+    /** The time of the event in the phone's time zone. */
+    val time: ZonedDateTime,
+)
+
 /** An action an applet offers, e.g. `telegram.send`. */
 data class ActionSpec(
     val id: String,
@@ -38,15 +69,42 @@ data class ActionSpec(
     val params: List<ParamSpec> = emptyList(),
 )
 
-/** A parameter of a trigger or an action, edited as text. */
+/** A parameter of a trigger, condition or action; its value is stored as text. */
 data class ParamSpec(
     val key: String,
     val label: String,
-    /** A template text: may contain variables, which are rendered before the action runs. */
-    val isTemplate: Boolean = false,
+    val kind: ParamKind = ParamKind.TEXT,
     /** For a trigger param: how it filters the event. An empty param lets any event through. */
     val filter: Filter? = null,
-)
+    /** The value a newly added element starts with. */
+    val default: String = "",
+) {
+    /** A template text: may contain variables, which are rendered before the action runs. */
+    val isTemplate: Boolean get() = kind == ParamKind.TEMPLATE
+}
+
+/** What a param's text holds, which decides how it is edited and checked. */
+enum class ParamKind {
+    /** Free text. */
+    TEXT,
+
+    /** Text with variables, e.g. `SMS от {sms.sender}`. */
+    TEMPLATE,
+
+    /** A time of day `HH:MM` ([ParamValues.time]). */
+    TIME,
+
+    /** A non-empty set of weekdays, ISO numbers `1,2,3` for Mon, Tue, Wed ([ParamValues.weekdays]). */
+    WEEKDAYS,
+    ;
+
+    /** False if the text cannot be read as this kind; text kinds accept anything. */
+    fun isValid(value: String): Boolean = when (this) {
+        TEXT, TEMPLATE -> true
+        TIME -> ParamValues.time(value) != null
+        WEEKDAYS -> ParamValues.weekdays(value) != null
+    }
+}
 
 /** How a trigger param checks one of the event's variables. */
 sealed interface Filter {
@@ -64,5 +122,19 @@ sealed interface Filter {
     /** The value contains the param's text, ignoring case. */
     data class Contains(override val variable: String) : Filter {
         override fun passes(wanted: String, actual: String) = actual.contains(wanted, ignoreCase = true)
+    }
+
+    /** The event's time of day (`HH:MM`) is the param's time. */
+    data class AtTime(override val variable: String) : Filter {
+        override fun passes(wanted: String, actual: String) =
+            ParamValues.time(wanted)?.let { it == ParamValues.time(actual) } ?: false
+    }
+
+    /** The event's weekday (an ISO number) is one of the param's weekdays. */
+    data class OnDays(override val variable: String) : Filter {
+        override fun passes(wanted: String, actual: String): Boolean {
+            val day = ParamValues.weekdays(actual)?.singleOrNull() ?: return false
+            return ParamValues.weekdays(wanted)?.contains(day) ?: false
+        }
     }
 }

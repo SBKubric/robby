@@ -2,6 +2,7 @@ package com.sbkubric.robby.core.applet
 
 import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.scenario.Action
+import com.sbkubric.robby.core.scenario.Condition
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.Trigger
 import kotlin.test.Test
@@ -11,7 +12,7 @@ class AppletCatalogTest {
 
     private val catalog = BuiltInApplets.catalog
 
-    private fun scenario(trigger: Trigger, vararg actions: Action) = Scenario("id", "Имя", true, trigger, actions.toList())
+    private fun scenario(trigger: Trigger, vararg actions: Action) = Scenario("id", "Имя", true, trigger, actions = actions.toList())
 
     @Test
     fun `description lists trigger with its filled filters and actions with their applets`() {
@@ -42,7 +43,40 @@ class AppletCatalogTest {
 
     @Test
     fun `applets are offered by the kind of element they have`() {
-        assertEquals(listOf("sms"), catalog.appletsWithTriggers().map { it.id })
-        assertEquals(listOf("telegram"), catalog.appletsWithActions().map { it.id })
+        assertEquals(listOf("system", "sms"), catalog.appletsWithTriggers().map { it.id })
+        assertEquals(listOf("system"), catalog.appletsWithConditions().map { it.id })
+        assertEquals(listOf("system", "telegram"), catalog.appletsWithActions().map { it.id })
+    }
+
+    @Test
+    fun `description shows schedule, conditions with readable values and the pause`() {
+        val description = catalog.describe(
+            Scenario(
+                id = "pulse",
+                name = "Пульс",
+                trigger = Trigger("system.schedule", mapOf("days" to "1,2,3,4,5,6,7", "time" to "9:00")),
+                conditions = listOf(
+                    Condition("system.days", mapOf("days" to "1,3,5")),
+                    Condition("system.window", mapOf("from" to "22:00", "to" to "08:00")),
+                    Condition("battery.level"),
+                ),
+                actions = listOf(Action("telegram.send", mapOf("text" to "{device} на связи"))),
+                cooldownMinutes = 60,
+            ),
+        )
+        assertEquals(
+            ScenarioDescription(
+                trigger = "По расписанию",
+                filters = listOf("каждый день", "09:00"),
+                actions = listOf(ScenarioDescription.Step("Telegram", "Отправить сообщение в группу")),
+                conditions = listOf(
+                    ScenarioDescription.Check("Дни недели", listOf("пн, ср, пт")),
+                    ScenarioDescription.Check("Окно времени", listOf("22:00", "08:00")),
+                    ScenarioDescription.Check("battery.level", emptyList()),
+                ),
+                cooldownMinutes = 60,
+            ),
+            description,
+        )
     }
 }

@@ -60,7 +60,7 @@
     <string name="problem_invalid_param">«%1$s» в «%2$s»</string>
     <string name="problem_variables">Переменные %1$s недоступны для триггера «%2$s». Уберите их или выберите другой триггер.</string>
 
-    <string name="permission_hint">Без разрешения на получение SMS этот сценарий не сработает.</string>
+    <string name="permission_hint">Не хватает разрешений Android: без них сценарий не сработает или придёт без части данных (например, номера или имени звонящего).</string>
     <string name="permission_hint_restricted">Если Android не даёт разрешить: «О приложении» → ⋮ → «Разрешить настройки с ограниченным доступом», затем повторите.</string>
     <string name="exact_alarm_hint">Без разрешения «Будильники и напоминания» расписание может опаздывать на несколько минут.</string>
     <string name="permission_request">Разрешить</string>

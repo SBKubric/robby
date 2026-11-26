@@ -87,6 +87,9 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
     val requestPermissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         permissionCheck++
     }
+    val openAppSettings = {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+    }
 
     val scroll = rememberScrollState()
     LaunchedEffect(vm.problems) { if (vm.problems.isNotEmpty()) scroll.animateScrollTo(0) }
@@ -135,11 +138,7 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                     if (missingPermissions.isNotEmpty()) {
                         PermissionHint(
                             onRequest = { requestPermissions.launch(missingPermissions.toTypedArray()) },
-                            onOpenSettings = {
-                                context.startActivity(
-                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
-                                )
-                            },
+                            onOpenSettings = openAppSettings,
                         )
                     }
                     if (inexactSchedule) {
@@ -163,6 +162,10 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                 ) {
                     spec?.params.orEmpty().forEach { param ->
                         ParamField(param, condition.params[param.key].orEmpty(), emptyList()) { vm.setConditionParam(index, param.key, it) }
+                    }
+                    val missing = remember(condition.id, permissionCheck) { AppletPermissions.missing(context, condition.id) }
+                    if (missing.isNotEmpty()) {
+                        PermissionHint(onRequest = { requestPermissions.launch(missing.toTypedArray()) }, onOpenSettings = openAppSettings)
                     }
                 }
             }
@@ -205,6 +208,12 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
         }
     }
 
+    // Asked for as the user picks the element, like the system's own prompts; the card's hint asks again later.
+    fun requestMissing(elementId: String) {
+        val missing = AppletPermissions.missing(context, elementId)
+        if (missing.isNotEmpty()) requestPermissions.launch(missing.toTypedArray())
+    }
+
     picker?.let { kind ->
         CatalogPicker(
             kind = kind,
@@ -212,12 +221,12 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
             onTrigger = { spec ->
                 vm.pickTrigger(spec)
                 picker = null
-                val missing = AppletPermissions.missing(context, spec.id)
-                if (missing.isNotEmpty()) requestPermissions.launch(missing.toTypedArray())
+                requestMissing(spec.id)
             },
             onCondition = { spec ->
                 vm.addCondition(spec)
                 picker = null
+                requestMissing(spec.id)
             },
             onAction = { spec ->
                 vm.addAction(spec)

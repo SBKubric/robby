@@ -3,17 +3,31 @@ package com.sbkubric.robby.applets
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import com.sbkubric.robby.core.applets.CallApplet
 import com.sbkubric.robby.core.applets.SmsApplet
 
-/** Android runtime permissions a trigger needs to receive its events. */
+/**
+ * Android runtime permissions a trigger needs to receive its events, or a condition to see the phone's state.
+ * Element ids are unique across the catalog, so one map serves both.
+ */
 object AppletPermissions {
 
-    private val byTrigger = mapOf(
-        SmsApplet.INCOMING to listOf(Manifest.permission.RECEIVE_SMS),
+    /** The call state broadcast, the caller's number in it, and the caller's contact name. */
+    private val callTrigger = listOf(
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.READ_CALL_LOG,
+        Manifest.permission.READ_CONTACTS,
     )
 
-    fun forTrigger(triggerId: String): List<String> = byTrigger[triggerId].orEmpty()
+    private val byElement = mapOf(
+        SmsApplet.INCOMING to listOf(Manifest.permission.RECEIVE_SMS),
+        CallApplet.INCOMING to callTrigger,
+        CallApplet.MISSED to callTrigger,
+        CallApplet.ACTIVE to listOf(Manifest.permission.READ_PHONE_STATE),
+    )
 
-    fun missing(context: Context, triggerId: String): List<String> =
-        forTrigger(triggerId).filter { context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+    fun forElement(elementId: String): List<String> = byElement[elementId].orEmpty()
+
+    fun missing(context: Context, elementId: String): List<String> =
+        forElement(elementId).filter { context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
 }

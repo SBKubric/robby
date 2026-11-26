@@ -26,6 +26,7 @@ import com.sbkubric.robby.core.applet.ScenarioDescription
 import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunReason
 import com.sbkubric.robby.core.log.RunStatus
+import com.sbkubric.robby.core.scenario.ScenarioProblem
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -119,6 +120,22 @@ fun cooldownLabel(minutes: Int): String = when {
     minutes <= 0 -> stringResource(R.string.pause_none)
     minutes % 60 == 0 -> stringResource(R.string.pause_hours, minutes / 60)
     else -> stringResource(R.string.pause_minutes, minutes)
+}
+
+/**
+ * The mark of a scenario that does not pass the editor's rules, computed from the catalog wherever it is shown:
+ * «Апплет недоступен: module.bridge» (imported from a build with an applet this one lacks) or «Есть ошибки»;
+ * `null` for a valid scenario.
+ */
+@Composable
+fun scenarioProblemMark(problems: List<ScenarioProblem>): String? {
+    if (problems.isEmpty()) return null
+    val unknown = problems.filterIsInstance<ScenarioProblem.UnknownElements>().flatMap { it.ids }
+    return if (unknown.isEmpty()) {
+        stringResource(R.string.scenario_needs_fix)
+    } else {
+        stringResource(R.string.scenario_unavailable, unknown.joinToString(", "))
+    }
 }
 
 @Composable

@@ -3,6 +3,7 @@ package com.sbkubric.robby.applets.system
 import android.content.Context
 import androidx.core.content.edit
 import com.sbkubric.robby.core.engine.DeviceNameProvider
+import com.sbkubric.robby.core.settings.ServerPhoneNameSetting
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * `{device}`: the server phone's name as set in Robby's Settings, or else [fallback]
  * (the name from Android's settings or the model).
  */
-class ServerPhoneName(context: Context, private val fallback: DeviceNameProvider) : DeviceNameProvider {
+class ServerPhoneName(context: Context, private val fallback: DeviceNameProvider) : DeviceNameProvider, ServerPhoneNameSetting {
 
     private val prefs = context.getSharedPreferences("server_phone", Context.MODE_PRIVATE)
     private val custom = MutableStateFlow(prefs.getString(NAME, null))
@@ -29,6 +30,10 @@ class ServerPhoneName(context: Context, private val fallback: DeviceNameProvider
     }
 
     override fun deviceName(): String = custom.value ?: defaultName()
+
+    override fun customName(): String? = custom.value
+
+    override fun setCustomName(name: String?) = set(name.orEmpty())
 
     private companion object {
         const val NAME = "name"

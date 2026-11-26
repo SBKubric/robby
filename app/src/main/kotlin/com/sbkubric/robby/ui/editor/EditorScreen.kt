@@ -65,7 +65,9 @@ import java.time.DayOfWeek
 fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
     val container = appContainer()
     val catalog = container.catalog
-    val vm = viewModel { EditorViewModel(container.scenarios, container.saveScenario, scenarioId) }
+    val vm = viewModel {
+        EditorViewModel(container.scenarios, container.saveScenario, container.testScenario, { container.delivery.kick() }, scenarioId)
+    }
     val draft = vm.draft
     val context = LocalContext.current
 
@@ -197,6 +199,15 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                         label = { Text(cooldownLabel(minutes)) },
                     )
                 }
+            }
+
+            OutlinedButton(onClick = vm::test, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.editor_test)) }
+            if (vm.tested) {
+                Text(
+                    stringResource(R.string.editor_test_done),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             if (!vm.isNew) {

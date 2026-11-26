@@ -1,5 +1,6 @@
 package com.sbkubric.robby.ui.scenarios
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -31,11 +33,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sbkubric.robby.R
 import com.sbkubric.robby.core.applets.TelegramApplet
+import com.sbkubric.robby.core.scenario.SwitchScenario
+import com.sbkubric.robby.ui.scenarioProblemMark
 import com.sbkubric.robby.ui.appContainer
 import com.sbkubric.robby.ui.formatRunTime
 import com.sbkubric.robby.ui.runStatusLabel
 import com.sbkubric.robby.ui.summaryLine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Home: every scenario with its switch, summary and last run;
@@ -67,25 +73,40 @@ fun ScenariosScreen(onOpen: (String) -> Unit, onOpenApplets: () -> Unit, modifie
         }
 
         val switchLabel = stringResource(R.string.scenario_switch)
+        val context = LocalContext.current
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
             items(list, key = { it.id }) { scenario ->
                 val last = lastRuns[scenario.id]
+                val mark = scenarioProblemMark(remember(scenario) { container.validator.validate(scenario) })
+                val cannotEnable = stringResource(R.string.scenario_cannot_enable, scenario.name)
                 ListItem(
                     modifier = Modifier.clickable { onOpen(scenario.id) },
                     headlineContent = { Text(scenario.name) },
                     supportingContent = {
-                        Text(
-                            summaryLine(container.catalog.describe(scenario)) + "\n" + if (last == null) {
-                                stringResource(R.string.scenario_never_ran)
-                            } else {
-                                stringResource(R.string.scenario_last_run, formatRunTime(last.time), runStatusLabel(last))
-                            },
-                        )
+                        Column {
+                            if (mark != null) Text(mark, color = MaterialTheme.colorScheme.error)
+                            Text(
+                                summaryLine(container.catalog.describe(scenario)) + "\n" + if (last == null) {
+                                    stringResource(R.string.scenario_never_ran)
+                                } else {
+                                    stringResource(R.string.scenario_last_run, formatRunTime(last.time), runStatusLabel(last))
+                                },
+                            )
+                        }
                     },
                     trailingContent = {
                         Switch(
                             checked = scenario.enabled,
-                            onCheckedChange = { on -> container.appScope.launch { container.scenarios.save(scenario.copy(enabled = on)) } },
+                            onCheckedChange = { on ->
+                                container.appScope.launch {
+                                    val result = container.switchScenario(scenario.id, on)
+                                    if (result is SwitchScenario.Result.Invalid) {
+                                        withContext(Dispatchers.Main) { Toast.makeText(context, cannotEnable, Toast.LENGTH_LONG).show() }
+                                    }
+                                }
+                            },
+                            // A scenario that cannot run is not offered to be switched on; one that is on can always go off.
+                            enabled = mark == null || scenario.enabled,
                             modifier = Modifier.semantics { contentDescription = switchLabel },
                         )
                     },

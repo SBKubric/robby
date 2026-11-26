@@ -9,6 +9,7 @@ import com.sbkubric.robby.core.applet.ActionSpec
 import com.sbkubric.robby.core.applet.ConditionSpec
 import com.sbkubric.robby.core.applet.ParamSpec
 import com.sbkubric.robby.core.applet.TriggerSpec
+import com.sbkubric.robby.core.engine.TestScenario
 import com.sbkubric.robby.core.scenario.Action
 import com.sbkubric.robby.core.scenario.Condition
 import com.sbkubric.robby.core.scenario.SaveScenario
@@ -22,6 +23,9 @@ import kotlinx.coroutines.launch
 class EditorViewModel(
     private val scenarios: ScenarioRepository,
     private val saveScenario: SaveScenario,
+    private val testScenario: TestScenario,
+    /** Asks delivery to perform a recorded run now. */
+    private val deliverNow: () -> Unit,
     scenarioId: String?,
 ) : ViewModel() {
 
@@ -32,6 +36,10 @@ class EditorViewModel(
     var loaded by mutableStateOf(isNew)
         private set
     var problems by mutableStateOf(emptyList<ScenarioProblem>())
+        private set
+
+    /** «Тест» has recorded a run of the draft as it was then. */
+    var tested by mutableStateOf(false)
         private set
 
     init {
@@ -78,6 +86,23 @@ class EditorViewModel(
         }
     }
 
+    /** «Тест»: one run of the draft as it is now, unsaved changes included, with sample values. */
+    fun test() {
+        viewModelScope.launch {
+            when (val result = testScenario(draft)) {
+                is TestScenario.Result.Recorded -> {
+                    problems = emptyList()
+                    tested = true
+                    deliverNow()
+                }
+                is TestScenario.Result.Invalid -> {
+                    problems = result.problems
+                    tested = false
+                }
+            }
+        }
+    }
+
     fun delete(onDeleted: () -> Unit) {
         val id = draft.id ?: return
         viewModelScope.launch {
@@ -90,5 +115,6 @@ class EditorViewModel(
 
     private fun update(change: ScenarioDraft.() -> ScenarioDraft) {
         draft = draft.change()
+        tested = false
     }
 }

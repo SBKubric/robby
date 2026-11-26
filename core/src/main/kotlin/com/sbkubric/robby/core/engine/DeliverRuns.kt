@@ -26,7 +26,8 @@ import java.time.Instant
  *   queues go side by side, so no network wait holds back a local run.
  * - **Actions** of a run go in order; one already done is not performed again when the run is retried.
  * - **Temporary failure** ([ActionResult.Retry]): the run waits, 30 s after the first failure, doubling up to 15 min,
- *   never less than the service asked for (`retry_after`, which a returning network does not cut short either); a run still failing 24 h after its event is «не выполнено».
+ *   never less than the service asked for (`retry_after`, which a returning network does not cut short either);
+ *   a run still failing 24 h after its event is «не выполнено».
  * - **Permanent failure** ([ActionResult.Failed]): the run fails. [ActionResult.Broken] also marks its connector
  *   «Сломан», and then every run that needs that connector fails at once instead of waiting.
  * - **Late**: a message performed more than [LateMark.THRESHOLD] after its event gets «⏱ HH:MM» of the event.
@@ -144,7 +145,12 @@ class DeliverRuns(
         val failures = attempts + 1
         val delay = maxOf(backoff(failures), result.after ?: Duration.ZERO)
         val notBefore = result.after?.let { minOf(now + it, deadline) }
-        return copy(attempts = failures, nextAttemptAt = minOf(now + delay, deadline), notBefore = notBefore, message = result.reason)
+        return copy(
+            attempts = failures,
+            nextAttemptAt = minOf(now + delay, deadline),
+            notBefore = notBefore,
+            message = result.reason,
+        )
     }
 
     private suspend fun perform(performer: ActionPerformer, params: Map<String, String>, key: String): ActionResult =

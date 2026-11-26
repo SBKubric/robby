@@ -34,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.sbkubric.robby.R
 import com.sbkubric.robby.core.applets.TelegramApplet
 import com.sbkubric.robby.core.scenario.SwitchScenario
-import com.sbkubric.robby.ui.scenarioProblemMark
 import com.sbkubric.robby.ui.appContainer
 import com.sbkubric.robby.ui.formatRunTime
 import com.sbkubric.robby.ui.runStatusLabel
+import com.sbkubric.robby.ui.scenarioProblemMark
 import com.sbkubric.robby.ui.summaryLine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

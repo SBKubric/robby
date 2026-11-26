@@ -60,26 +60,43 @@ class ServerPhoneChecks(context: Context) {
         val missing = needed.filter { context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         return listOf(
             Result(Check.PERMISSIONS, missing.isEmpty(), Fix.Request(missing), missing),
-            Result(Check.RESTRICTED_SETTINGS, !restrictedSettingsInTheWay(missing), open(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)),
+            Result(
+                Check.RESTRICTED_SETTINGS,
+                !restrictedSettingsInTheWay(missing),
+                open(Settings.ACTION_APPLICATION_DETAILS_SETTINGS),
+            ),
             Result(
                 Check.BATTERY_OPTIMIZATION,
                 service<PowerManager>().isIgnoringBatteryOptimizations(packageName),
                 // Asks right there; needs REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, fine for an app that is not on Play.
                 open(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS),
             ),
-            Result(Check.UNUSED_APP_PAUSE, context.packageManager.isAutoRevokeWhitelisted, open(Intent.ACTION_AUTO_REVOKE_PERMISSIONS)),
+            Result(
+                Check.UNUSED_APP_PAUSE,
+                context.packageManager.isAutoRevokeWhitelisted,
+                open(Intent.ACTION_AUTO_REVOKE_PERMISSIONS),
+            ),
             Result(
                 Check.NOTIFICATIONS,
                 service<NotificationManager>().areNotificationsEnabled(),
                 Fix.Open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)),
             ),
-            Result(Check.EXACT_ALARMS, service<AlarmManager>().canScheduleExactAlarms(), open(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)),
+            Result(
+                Check.EXACT_ALARMS,
+                service<AlarmManager>().canScheduleExactAlarms(),
+                open(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM),
+            ),
             Result(
                 Check.DATA_SAVER,
                 service<ConnectivityManager>().restrictBackgroundStatus != ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
                 open(Settings.ACTION_IGNORE_BACKGROUND_DATA_RESTRICTIONS_SETTINGS),
             ),
-            Result(Check.SCREEN_LOCK, !service<KeyguardManager>().isDeviceSecure, Fix.Open(Intent(Settings.ACTION_SECURITY_SETTINGS))),
+            // Decision #12: no lock on the server phone, or Robby stays silent after a reboot until it is unlocked.
+            Result(
+                Check.SCREEN_LOCK,
+                !service<KeyguardManager>().isDeviceSecure,
+                Fix.Open(Intent(Settings.ACTION_SECURITY_SETTINGS)),
+            ),
         )
     }
 

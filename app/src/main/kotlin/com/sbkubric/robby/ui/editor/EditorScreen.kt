@@ -66,7 +66,13 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
     val container = appContainer()
     val catalog = container.catalog
     val vm = viewModel {
-        EditorViewModel(container.scenarios, container.saveScenario, container.testScenario, { container.delivery.kick() }, scenarioId)
+        EditorViewModel(
+            container.scenarios,
+            container.saveScenario,
+            container.testScenario,
+            deliverNow = { container.delivery.kick() },
+            scenarioId = scenarioId,
+        )
     }
     val draft = vm.draft
     val context = LocalContext.current

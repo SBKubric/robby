@@ -9,8 +9,8 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
-import androidx.room.Transaction
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import androidx.room.migration.Migration
@@ -99,7 +99,10 @@ interface RunDao {
     @Query("SELECT * FROM runs WHERE id IN (SELECT MAX(id) FROM runs GROUP BY scenarioId)")
     fun observeLastRuns(): Flow<List<RunEntity>>
 
-    @Query("SELECT * FROM runs WHERE scenarioId = :scenarioId AND status NOT IN (:excluded) AND test = 0 ORDER BY timeMillis DESC, id DESC LIMIT 1")
+    @Query(
+        "SELECT * FROM runs WHERE scenarioId = :scenarioId AND status NOT IN (:excluded) AND test = 0 " +
+            "ORDER BY timeMillis DESC, id DESC LIMIT 1",
+    )
     suspend fun lastExecuted(scenarioId: String, excluded: List<String>): RunEntity?
 
     @Query(

@@ -33,6 +33,11 @@ data class Run(
     val attempts: Int = 0,
     /** While [RunStatus.PENDING] after a temporary failure: not tried again before this time. */
     val nextAttemptAt: Instant? = null,
+    /**
+     * While [RunStatus.PENDING] after the service itself asked to wait (`retry_after`): the network coming back
+     * does not move the next attempt before this time.
+     */
+    val notBefore: Instant? = null,
     /** An action was performed late and its text got «⏱ HH:MM» of the event («с опозданием»). */
     val late: Boolean = false,
 )

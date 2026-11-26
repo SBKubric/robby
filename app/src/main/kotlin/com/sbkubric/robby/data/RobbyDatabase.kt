@@ -44,6 +44,8 @@ data class RunEntity(
     @ColumnInfo(defaultValue = "0") val attempts: Int = 0,
     val nextAttemptMillis: Long? = null,
     @ColumnInfo(defaultValue = "0") val late: Boolean = false,
+    /** The service's own wait (`retry_after`) while pending. */
+    val notBeforeMillis: Long? = null,
 )
 
 @Dao
@@ -92,7 +94,7 @@ interface RunDao {
 }
 
 // No exported schema yet: nothing has been released. Migrations keep debug installs working meanwhile.
-@Database(entities = [ScenarioEntity::class, RunEntity::class], version = 3, exportSchema = false)
+@Database(entities = [ScenarioEntity::class, RunEntity::class], version = 4, exportSchema = false)
 abstract class RobbyDatabase : RoomDatabase() {
     abstract fun scenarios(): ScenarioDao
     abstract fun runs(): RunDao
@@ -100,7 +102,7 @@ abstract class RobbyDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): RobbyDatabase =
             Room.databaseBuilder(context, RobbyDatabase::class.java, "robby.db")
-                .addMigrations(ADD_RUN_ERROR, ADD_RUN_DELIVERY)
+                .addMigrations(ADD_RUN_ERROR, ADD_RUN_DELIVERY, ADD_RUN_SERVICE_WAIT)
                 .build()
 
         private val ADD_RUN_ERROR = object : Migration(1, 2) {
@@ -116,6 +118,13 @@ abstract class RobbyDatabase : RoomDatabase() {
                 connection.execSQL("ALTER TABLE runs ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
                 connection.execSQL("ALTER TABLE runs ADD COLUMN nextAttemptMillis INTEGER")
                 connection.execSQL("ALTER TABLE runs ADD COLUMN late INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Slice 7: the service's own wait of a pending run. */
+        private val ADD_RUN_SERVICE_WAIT = object : Migration(3, 4) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE runs ADD COLUMN notBeforeMillis INTEGER")
             }
         }
     }

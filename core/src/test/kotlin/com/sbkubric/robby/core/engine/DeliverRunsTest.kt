@@ -223,6 +223,37 @@ class DeliverRunsTest {
     }
 
     @Test
+    fun `network coming back does not cut short the wait the service itself asked for`() = runBlocking {
+        answer = { ActionResult.Retry("Слишком много сообщений", after = java.time.Duration.ofSeconds(45)) }
+        given(scenario("a", telegram()))
+        val run = sms("Код").single()
+        deliver()
+
+        answer = { ActionResult.Done() }
+        passSeconds(5)
+        assertEquals(eventTime.plusSeconds(45), deliver(networkReturned = true), "still due when the service allows")
+        assertEquals(RunStatus.PENDING, run.now().status)
+
+        clock.now = eventTime.plusSeconds(45)
+        deliver()
+        assertEquals(RunStatus.DONE, run.now().status)
+    }
+
+    @Test
+    fun `network coming back after the service's wait is over retries at once`() = runBlocking {
+        answer = { ActionResult.Retry("Слишком много сообщений", after = java.time.Duration.ofSeconds(1)) }
+        given(scenario("a", telegram()))
+        val run = sms("Код").single()
+        deliver()
+
+        answer = { ActionResult.Done() }
+        passSeconds(5)
+        deliver(networkReturned = true)
+
+        assertEquals(RunStatus.DONE, run.now().status)
+    }
+
+    @Test
     fun `run gives up 24 h after its event and is not tried later than that`() = runBlocking {
         answer = offline
         given(scenario("a", telegram()))

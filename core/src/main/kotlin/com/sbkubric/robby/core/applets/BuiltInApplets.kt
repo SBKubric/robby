@@ -49,5 +49,5 @@ object TelegramApplet {
 }
 
 object BuiltInApplets {
-    val catalog = AppletCatalog(listOf(SystemApplet.applet, SmsApplet.applet, TelegramApplet.applet))
+    val catalog = AppletCatalog(listOf(SystemApplet.applet, BatteryApplet.applet, SmsApplet.applet, TelegramApplet.applet))
 }

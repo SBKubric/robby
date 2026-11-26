@@ -81,4 +81,23 @@ class ScenarioValidatorTest {
         )
         assertEquals(listOf(ScenarioProblem.EmptyText), problems)
     }
+
+    @Test
+    fun `battery triggers offer the level and the temperature, thresholds must be whole numbers in range`() {
+        fun battery(trigger: String, vararg params: Pair<String, String>) = validator.validate(
+            draft(trigger = Trigger(trigger, params.toMap()), text = "{battery.level} % {battery.temperature} °C"),
+        )
+
+        assertEquals(emptyList(), battery("battery.below", "level" to "20"))
+        assertEquals(emptyList(), battery("battery.unplugged"))
+        assertEquals(emptyList(), battery("battery.hot", "temperature" to " 45 "))
+        assertEquals(
+            List(5) { listOf(ScenarioProblem.InvalidParams(setOf(ScenarioProblem.ParamRef("battery.above", "level")))) },
+            listOf("", "0", "100", "20,5", "-5").map { battery("battery.above", "level" to it) },
+        )
+        assertEquals(
+            listOf(ScenarioProblem.InvalidParams(setOf(ScenarioProblem.ParamRef("battery.level_above", "level")))),
+            validator.validate(draft().copy(conditions = listOf(Condition("battery.level_above", mapOf("level" to "много"))))),
+        )
+    }
 }

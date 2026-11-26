@@ -1,5 +1,7 @@
 package com.sbkubric.robby.core
 
+import com.sbkubric.robby.core.applets.BatteryWatch
+import com.sbkubric.robby.core.applets.BatteryWatchStore
 import com.sbkubric.robby.core.log.ActivityLog
 import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunStatus
@@ -32,4 +34,12 @@ class FakeActivityLog : ActivityLog {
     override suspend fun prune(olderThan: Instant, keepNewest: Int) {
         runs.value = runs.value.filter { !it.time.isBefore(olderThan) }.take(keepNewest)
     }
+}
+
+/** Keeps the battery watch's memory as the app's preferences would: it outlives a [BatteryWatch] instance. */
+class FakeBatteryWatchStore : BatteryWatchStore {
+    var memory: BatteryWatch.Memory? = null
+
+    override fun load() = memory
+    override fun save(memory: BatteryWatch.Memory) { this.memory = memory }
 }

@@ -11,12 +11,27 @@ import android.os.Build
 import android.os.IBinder
 import com.sbkubric.robby.MainActivity
 import com.sbkubric.robby.R
+import com.sbkubric.robby.appContainer
+import com.sbkubric.robby.applets.battery.BatteryReceiver
 
 /**
  * The always-on foreground service that keeps Robby alive on the server phone.
- * Later slices register their event sources while it runs.
+ * Event sources that the system delivers only to a running process are registered while it runs (the battery).
  */
 class RobbyService : Service() {
+
+    private var battery: BatteryReceiver? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        battery = BatteryReceiver(appContainer).also { it.register(this) }
+    }
+
+    override fun onDestroy() {
+        battery?.unregister(this)
+        battery = null
+        super.onDestroy()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = buildNotification()

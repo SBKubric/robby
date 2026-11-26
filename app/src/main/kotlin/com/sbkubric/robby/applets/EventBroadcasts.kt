@@ -5,6 +5,7 @@ import com.sbkubric.robby.AppContainer
 import com.sbkubric.robby.core.engine.Event
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
@@ -20,13 +21,19 @@ fun BroadcastReceiver.handleEvents(container: AppContainer, prepare: suspend () 
     val pending = goAsync()
     container.appScope.launch {
         try {
-            withTimeoutOrNull(BROADCAST_LIMIT) {
-                prepare().map { async { container.handleEvent(it, timeLimit = RUN_LIMIT) } }.awaitAll()
-            }
+            withTimeoutOrNull(BROADCAST_LIMIT) { container.runEvents(prepare()) }
         } finally {
             pending.finish()
         }
     }
+}
+
+/**
+ * Runs the [events] through the engine side by side, each scenario's run within RUN_LIMIT
+ * (so the activity log says «timed out» rather than nothing if an action hangs).
+ */
+suspend fun AppContainer.runEvents(events: List<Event>) {
+    coroutineScope { events.map { async { handleEvent(it, timeLimit = RUN_LIMIT) } }.awaitAll() }
 }
 
 private val RUN_LIMIT = 8.seconds

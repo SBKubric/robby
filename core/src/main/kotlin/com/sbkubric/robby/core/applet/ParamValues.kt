@@ -8,6 +8,11 @@ object ParamValues {
 
     private val timePattern = Regex("""(\d{1,2}):(\d{2})""")
 
+    private val numberPattern = Regex("""\d{1,3}""")
+
+    /** `20`; `null` if it is not a whole number 0–999. */
+    fun number(text: String): Int? = text.trim().takeIf { numberPattern.matches(it) }?.toInt()
+
     /** `9:05` or `09:05`; `null` if it is not a time of day. */
     fun time(text: String): LocalTime? {
         val match = timePattern.matchEntire(text.trim()) ?: return null

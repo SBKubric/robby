@@ -3,6 +3,8 @@ package com.sbkubric.robby
 import android.content.Context
 import android.util.Log
 import com.sbkubric.robby.applets.AndroidDeviceName
+import com.sbkubric.robby.applets.battery.BatteryWatchPrefs
+import com.sbkubric.robby.applets.battery.StickyBatteryState
 import com.sbkubric.robby.applets.system.ScenarioNotifier
 import com.sbkubric.robby.applets.system.ScheduleAlarms
 import com.sbkubric.robby.applets.system.ServerPhoneName
@@ -10,6 +12,7 @@ import com.sbkubric.robby.applets.telegram.TelegramApi
 import com.sbkubric.robby.applets.telegram.TelegramConnector
 import com.sbkubric.robby.applets.telegram.TelegramSettingsStore
 import com.sbkubric.robby.core.applet.AppletCatalog
+import com.sbkubric.robby.core.applets.BatteryWatch
 import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.applets.SystemApplet
 import com.sbkubric.robby.core.applets.TelegramApplet
@@ -55,6 +58,9 @@ class AppContainer(context: Context) {
     val scheduleAlarms = ScheduleAlarms(appContext, scenarios, clock)
     private val notifier = ScenarioNotifier(appContext)
 
+    /** Fed by the service's battery receiver; one per process, its memory in preferences. */
+    val batteryWatch = BatteryWatch(scenarios, BatteryWatchPrefs(appContext))
+
     val saveScenario = SaveScenario(scenarios, ScenarioValidator(catalog))
 
     val handleEvent = HandleEvent(
@@ -66,6 +72,7 @@ class AppContainer(context: Context) {
         ),
         log = activityLog,
         deviceName = serverPhoneName,
+        battery = StickyBatteryState(appContext),
         clock = clock,
     )
 }

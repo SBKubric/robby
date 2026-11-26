@@ -43,8 +43,8 @@ class AppletCatalogTest {
 
     @Test
     fun `applets are offered by the kind of element they have`() {
-        assertEquals(listOf("system", "sms"), catalog.appletsWithTriggers().map { it.id })
-        assertEquals(listOf("system"), catalog.appletsWithConditions().map { it.id })
+        assertEquals(listOf("system", "battery", "sms"), catalog.appletsWithTriggers().map { it.id })
+        assertEquals(listOf("system", "battery"), catalog.appletsWithConditions().map { it.id })
         assertEquals(listOf("system", "telegram"), catalog.appletsWithActions().map { it.id })
     }
 
@@ -75,6 +75,31 @@ class AppletCatalogTest {
                     ScenarioDescription.Check("battery.level", emptyList()),
                 ),
                 cooldownMinutes = 60,
+            ),
+            description,
+        )
+    }
+
+    @Test
+    fun `description shows thresholds with their units`() {
+        val description = catalog.describe(
+            Scenario(
+                id = "low",
+                name = "Разряжается",
+                trigger = Trigger("battery.below", mapOf("level" to "20")),
+                conditions = listOf(Condition("battery.level_above", mapOf("level" to "5")), Condition("battery.not_charging")),
+                actions = listOf(Action("telegram.send", mapOf("text" to "Заряд {battery.level} %"))),
+            ),
+        )
+        assertEquals(
+            ScenarioDescription(
+                trigger = "Заряд ниже порога",
+                filters = listOf("20 %"),
+                actions = listOf(ScenarioDescription.Step("Telegram", "Отправить сообщение в группу")),
+                conditions = listOf(
+                    ScenarioDescription.Check("Заряд выше", listOf("5 %")),
+                    ScenarioDescription.Check("Не на зарядке", emptyList()),
+                ),
             ),
             description,
         )

@@ -65,7 +65,7 @@ class ScenarioValidator(private val catalog: AppletCatalog) {
                 draft.conditions.map { Triple(it.id, catalog.condition(it.id)?.params.orEmpty(), it.params) } +
                 draft.actions.map { Triple(it.id, catalog.action(it.id)?.params.orEmpty(), it.params) }
         return elements.flatMap { (id, specs, params) ->
-            specs.filter { !it.kind.isValid(params[it.key].orEmpty()) }.map { ScenarioProblem.ParamRef(id, it.key) }
+            specs.filter { !it.isValid(params[it.key].orEmpty()) }.map { ScenarioProblem.ParamRef(id, it.key) }
         }.toSet()
     }
 }

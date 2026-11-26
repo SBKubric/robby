@@ -118,6 +118,7 @@ class SystemScheduleTest {
             performers = mapOf("telegram.send" to ActionPerformer { sent += it.getValue("text"); ActionResult.Done() }),
             log = FakeActivityLog(),
             deviceName = { "Pixel дома" },
+            battery = { null },
             clock = Clock.fixed(fire.time, moscow),
         )
 

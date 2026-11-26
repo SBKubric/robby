@@ -33,8 +33,18 @@ data class Run(
     val attempts: Int = 0,
     /** While [RunStatus.PENDING] after a temporary failure: not tried again before this time. */
     val nextAttemptAt: Instant? = null,
+    /**
+     * While [RunStatus.PENDING] after the service itself asked to wait (`retry_after`): the network coming back
+     * does not move the next attempt before this time.
+     */
+    val notBefore: Instant? = null,
     /** An action was performed late and its text got «⏱ HH:MM» of the event («с опозданием»). */
     val late: Boolean = false,
+    /**
+     * «тест»: started by the editor's «Тест» button with sample values ([com.sbkubric.robby.core.engine.TestScenario]),
+     * not by an event. It does not count for the pause and is delivered even if its scenario is off or not saved.
+     */
+    val test: Boolean = false,
 )
 
 /** One action of a run's snapshot: what to perform, and whether it is already done. */
@@ -91,6 +101,9 @@ enum class RunReason {
 
     /** [RunStatus.CANCELLED]: the scenario was deleted. */
     SCENARIO_DELETED,
+
+    /** [RunStatus.CANCELLED]: settings were imported, replacing every scenario. */
+    SETTINGS_IMPORTED,
 }
 
 /** Port: the history of runs, newest first; it also holds the pending runs that delivery works through. */
@@ -110,8 +123,8 @@ interface ActivityLog {
     fun observeLastRuns(): Flow<Map<String, Run>>
 
     /**
-     * The newest run of the scenario whose actions were set to run — pending, done or failed, not skipped or cancelled:
-     * the pause counts from it.
+     * The newest run of the scenario whose actions were set to run — pending, done or failed, not skipped or cancelled,
+     * and not a [Run.test]: the pause counts from it.
      */
     suspend fun lastExecuted(scenarioId: String): Run?
 

@@ -11,4 +11,7 @@ interface ScenarioRepository {
     /** Inserts a new scenario or replaces the one with the same id. */
     suspend fun save(scenario: Scenario)
     suspend fun delete(id: String)
+
+    /** Replaces every stored scenario with [scenarios] at once: no one sees a mix of the old and the new. */
+    suspend fun replaceAll(scenarios: List<Scenario>)
 }

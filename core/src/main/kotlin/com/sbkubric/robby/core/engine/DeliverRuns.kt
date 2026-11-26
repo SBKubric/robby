@@ -26,11 +26,13 @@ import java.time.Instant
  *   queues go side by side, so no network wait holds back a local run.
  * - **Actions** of a run go in order; one already done is not performed again when the run is retried.
  * - **Temporary failure** ([ActionResult.Retry]): the run waits, 30 s after the first failure, doubling up to 15 min,
- *   never less than the service asked for; a run still failing 24 h after its event is «не выполнено».
+ *   never less than the service asked for (`retry_after`, which a returning network does not cut short either);
+ *   a run still failing 24 h after its event is «не выполнено».
  * - **Permanent failure** ([ActionResult.Failed]): the run fails. [ActionResult.Broken] also marks its connector
  *   «Сломан», and then every run that needs that connector fails at once instead of waiting.
  * - **Late**: a message performed more than [LateMark.THRESHOLD] after its event gets «⏱ HH:MM» of the event.
- * - **Cancelled**: a waiting run whose scenario has been switched off or deleted is not performed.
+ * - **Cancelled**: a waiting run whose scenario has been switched off or deleted is not performed (a test run is,
+ *   as «Тест» works on the editor's draft).
  */
 class DeliverRuns(
     private val log: ActivityLog,
@@ -45,7 +47,8 @@ class DeliverRuns(
     private val passing = Mutex()
 
     /**
-     * One pass over the pending runs. With [networkReturned], runs waiting after a temporary failure are tried at once.
+     * One pass over the pending runs. With [networkReturned], runs waiting after a temporary failure are tried at once,
+     * unless the service itself asked them to wait longer ([Run.notBefore]).
      * Returns when the next pass is due (the earliest next attempt), or `null` if nothing waits.
      */
     suspend operator fun invoke(networkReturned: Boolean = false): Instant? = passing.withLock {
@@ -55,12 +58,20 @@ class DeliverRuns(
             .minOrNull()
     }
 
-    /** Cancels the runs whose scenario is switched off or gone; returns the others. */
+    /**
+     * Cancels every pending run, test runs too, with [reason], between passes: none is performed after this returns.
+     * Used when the scenarios they belong to are replaced.
+     */
+    suspend fun cancelPending(reason: RunReason) = passing.withLock {
+        log.pending().forEach { log.update(it.finish(RunStatus.CANCELLED, null, reason)) }
+    }
+
+    /** Cancels the runs whose scenario is switched off or gone; returns the others. A test run is never cancelled so. */
     private suspend fun withoutCancelled(pending: List<Run>): List<Run> {
         if (pending.isEmpty()) return pending
         val current = scenarios.all().associateBy { it.id }
         return pending.filter { run ->
-            val reason = when (current[run.scenarioId]?.enabled) {
+            val reason = if (run.test) null else when (current[run.scenarioId]?.enabled) {
                 null -> RunReason.SCENARIO_DELETED
                 false -> RunReason.SCENARIO_DISABLED
                 true -> null
@@ -74,7 +85,9 @@ class DeliverRuns(
     private suspend fun deliver(queue: List<Run>, networkReturned: Boolean): Instant? {
         for (run in queue) {
             val due = run.nextAttemptAt
-            if (!networkReturned && due != null && due.isAfter(clock.instant())) return due
+            val now = clock.instant()
+            val early = !networkReturned || run.notBefore?.isAfter(now) == true
+            if (early && due != null && due.isAfter(now)) return due
             val result = attempt(run)
             log.update(result)
             if (result.status == RunStatus.PENDING) return result.nextAttemptAt
@@ -131,7 +144,13 @@ class DeliverRuns(
         if (!now.isBefore(deadline)) return finish(RunStatus.FAILED, result.reason, RunReason.GAVE_UP)
         val failures = attempts + 1
         val delay = maxOf(backoff(failures), result.after ?: Duration.ZERO)
-        return copy(attempts = failures, nextAttemptAt = minOf(now + delay, deadline), message = result.reason)
+        val notBefore = result.after?.let { minOf(now + it, deadline) }
+        return copy(
+            attempts = failures,
+            nextAttemptAt = minOf(now + delay, deadline),
+            notBefore = notBefore,
+            message = result.reason,
+        )
     }
 
     private suspend fun perform(performer: ActionPerformer, params: Map<String, String>, key: String): ActionResult =
@@ -144,7 +163,7 @@ class DeliverRuns(
         }
 
     private fun Run.finish(status: RunStatus, message: String?, reason: RunReason? = null) =
-        copy(status = status, message = message, reason = reason, nextAttemptAt = null)
+        copy(status = status, message = message, reason = reason, nextAttemptAt = null, notBefore = null)
 
     companion object {
         /** A run that keeps failing temporarily is «не выполнено» this long after its event. */

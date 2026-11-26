@@ -26,6 +26,7 @@ import com.sbkubric.robby.core.applet.ScenarioDescription
 import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunReason
 import com.sbkubric.robby.core.log.RunStatus
+import com.sbkubric.robby.core.scenario.ScenarioProblem
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -43,17 +44,23 @@ fun formatRunTime(time: Instant, zone: ZoneId = ZoneId.systemDefault()): String 
     return if (local.toLocalDate() == LocalDate.now(zone)) timeOnly.format(local) else dateTime.format(local)
 }
 
-/** «в очереди», «выполнено» («с опозданием» if ⏱ was added), «не выполнено», «пропущено», «отменено». */
+/**
+ * «в очереди», «выполнено» («с опозданием» if ⏱ was added), «не выполнено», «пропущено», «отменено»;
+ * a run of «Тест» starts with «тест ·».
+ */
 @Composable
-fun runStatusLabel(run: Run): String = stringResource(
-    when (run.status) {
-        RunStatus.PENDING -> R.string.run_pending
-        RunStatus.DONE -> if (run.late) R.string.run_done_late else R.string.run_done
-        RunStatus.FAILED -> R.string.run_failed
-        RunStatus.SKIPPED -> R.string.run_skipped
-        RunStatus.CANCELLED -> R.string.run_cancelled
-    },
-)
+fun runStatusLabel(run: Run): String {
+    val status = stringResource(
+        when (run.status) {
+            RunStatus.PENDING -> R.string.run_pending
+            RunStatus.DONE -> if (run.late) R.string.run_done_late else R.string.run_done
+            RunStatus.FAILED -> R.string.run_failed
+            RunStatus.SKIPPED -> R.string.run_skipped
+            RunStatus.CANCELLED -> R.string.run_cancelled
+        },
+    )
+    return if (run.test) stringResource(R.string.run_test, status) else status
+}
 
 fun runTone(status: RunStatus): BadgeTone = when (status) {
     RunStatus.DONE -> BadgeTone.GOOD
@@ -78,6 +85,7 @@ fun runMessage(run: Run, catalog: AppletCatalog): String? = when (run.reason) {
     RunReason.CONNECTOR_BROKEN -> stringResource(R.string.run_error_connector_broken, run.message.orEmpty())
     RunReason.SCENARIO_DISABLED -> stringResource(R.string.run_cancelled_disabled)
     RunReason.SCENARIO_DELETED -> stringResource(R.string.run_cancelled_deleted)
+    RunReason.SETTINGS_IMPORTED -> stringResource(R.string.run_cancelled_imported)
     null -> if (run.status == RunStatus.PENDING) pendingMessage(run) else run.message
 }
 
@@ -112,6 +120,22 @@ fun cooldownLabel(minutes: Int): String = when {
     minutes <= 0 -> stringResource(R.string.pause_none)
     minutes % 60 == 0 -> stringResource(R.string.pause_hours, minutes / 60)
     else -> stringResource(R.string.pause_minutes, minutes)
+}
+
+/**
+ * The mark of a scenario that does not pass the editor's rules, computed from the catalog wherever it is shown:
+ * «Апплет недоступен: module.bridge» (imported from a build with an applet this one lacks) or «Есть ошибки»;
+ * `null` for a valid scenario.
+ */
+@Composable
+fun scenarioProblemMark(problems: List<ScenarioProblem>): String? {
+    if (problems.isEmpty()) return null
+    val unknown = problems.filterIsInstance<ScenarioProblem.UnknownElements>().flatMap { it.ids }
+    return if (unknown.isEmpty()) {
+        stringResource(R.string.scenario_needs_fix)
+    } else {
+        stringResource(R.string.scenario_unavailable, unknown.joinToString(", "))
+    }
 }
 
 @Composable

@@ -6,6 +6,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -13,6 +15,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -20,16 +23,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.sbkubric.robby.R
+import com.sbkubric.robby.core.applet.ConnectorState
 import com.sbkubric.robby.ui.editor.EditorScreen
 import com.sbkubric.robby.ui.scenarios.ScenariosScreen
 import com.sbkubric.robby.ui.settings.ActiveAppletsScreen
 import com.sbkubric.robby.ui.settings.ActivityLogScreen
 import com.sbkubric.robby.ui.settings.SettingsScreen
+import com.sbkubric.robby.ui.settings.rememberPhoneChecks
 import com.sbkubric.robby.ui.telegram.TelegramSetupScreen
 import com.sbkubric.robby.ui.theme.RobbyTheme
 import kotlinx.serialization.Serializable
@@ -73,6 +80,11 @@ private enum class Tab(@StringRes val label: Int, val icon: ImageVector) {
 @Composable
 private fun HomeScreen(onOpenScenario: (String?) -> Unit, onOpenApplets: () -> Unit, onOpenLog: () -> Unit) {
     var current by rememberSaveable { mutableStateOf(Tab.Scenarios) }
+    val checks = rememberPhoneChecks()
+    val telegram by appContainer().telegram.state.collectAsState(initial = ConnectorState.NOT_CONFIGURED)
+    // The red dot on «Настройки»: a check fails or a connector is broken.
+    val settingsProblem = checks.any { !it.ok } || telegram == ConnectorState.BROKEN
+    val problemLabel = stringResource(R.string.settings_problem)
     Scaffold(
         floatingActionButton = {
             if (current == Tab.Scenarios) {
@@ -89,7 +101,15 @@ private fun HomeScreen(onOpenScenario: (String?) -> Unit, onOpenApplets: () -> U
                     NavigationBarItem(
                         selected = tab == current,
                         onClick = { current = tab },
-                        icon = { Icon(tab.icon, contentDescription = null) },
+                        icon = {
+                            if (tab == Tab.Settings && settingsProblem) {
+                                BadgedBox(badge = { Badge(Modifier.semantics { contentDescription = problemLabel }) }) {
+                                    Icon(tab.icon, contentDescription = null)
+                                }
+                            } else {
+                                Icon(tab.icon, contentDescription = null)
+                            }
+                        },
                         label = { Text(stringResource(tab.label)) },
                     )
                 }
@@ -99,7 +119,7 @@ private fun HomeScreen(onOpenScenario: (String?) -> Unit, onOpenApplets: () -> U
         val modifier = Modifier.padding(padding)
         when (current) {
             Tab.Scenarios -> ScenariosScreen(onOpen = { onOpenScenario(it) }, onOpenApplets = onOpenApplets, modifier = modifier)
-            Tab.Settings -> SettingsScreen(onOpenApplets, onOpenLog, modifier)
+            Tab.Settings -> SettingsScreen(checks, onOpenApplets, onOpenLog, modifier)
         }
     }
 }

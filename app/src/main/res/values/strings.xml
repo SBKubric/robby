@@ -12,6 +12,9 @@
     <string name="scenario_last_run">Последнее: %1$s · %2$s</string>
     <string name="scenario_never_ran">Ещё не срабатывал</string>
     <string name="scenario_switch">Включён</string>
+    <string name="scenario_unavailable">Апплет недоступен: %1$s. Сценарий выключен, пока его не исправить.</string>
+    <string name="scenario_needs_fix">Есть ошибки: откройте сценарий и исправьте. Сценарий выключен до этого.</string>
+    <string name="scenario_cannot_enable">Нельзя включить «%1$s»: сначала исправьте его в редакторе.</string>
     <string name="banner_broken">%1$s сломан: %2$s</string>
     <string name="banner_reconnect">Переподключить ›</string>
 
@@ -27,6 +30,8 @@
     <string name="run_error_connector_broken">Коннектор сломан. %1$s</string>
     <string name="run_cancelled_disabled">Сценарий выключили до выполнения</string>
     <string name="run_cancelled_deleted">Сценарий удалили до выполнения</string>
+    <string name="run_cancelled_imported">Настройки заменили импортом до выполнения</string>
+    <string name="run_test">тест · %1$s</string>
     <string name="run_error_no_performer">Действие %1$s недоступно в этой версии Robby</string>
     <string name="run_error_timed_out">Не успело за отведённое время (до версии с очередью)</string>
     <string name="run_skipped">пропущено</string>
@@ -61,6 +66,8 @@
     <string name="editor_delete_text">Записи о его срабатываниях останутся в Журнале активности.</string>
     <string name="editor_delete_confirm">Удалить</string>
     <string name="editor_cancel">Отмена</string>
+    <string name="editor_test">Тест</string>
+    <string name="editor_test_done">Тестовое срабатывание в очереди, результат — в Журнале активности с пометкой «тест». Переменные примерные, условия и Пауза не проверялись.</string>
 
     <string name="problem_no_name">Введите название сценария.</string>
     <string name="problem_no_trigger">Выберите триггер: без него сценарий не знает, когда срабатывать.</string>
@@ -97,6 +104,58 @@
     <string name="settings_phone_name_default">%1$s (по умолчанию)</string>
     <string name="phone_name_hint">Подставляется вместо {device}. Пусто — имя из настроек Android: %1$s</string>
     <string name="phone_name_field">Имя</string>
+    <string name="settings_export">Экспорт настроек</string>
+    <string name="settings_export_summary">Сценарии и имя телефона-сервера в файл, без токенов</string>
+    <string name="settings_import">Импорт настроек</string>
+    <string name="settings_import_summary">Заменить всё содержимым файла экспорта</string>
+    <string name="settings_checks">Проверки телефона-сервера</string>
+    <string name="settings_checks_summary">%1$d из %2$d в порядке</string>
+    <string name="settings_problem">Есть проблема</string>
+
+    <!-- Export and import -->
+    <string name="export_done">Настройки сохранены в файл. Токены в него не попали.</string>
+    <string name="export_failed">Не удалось сохранить файл: %1$s</string>
+    <string name="import_read_failed">Не удалось прочитать файл: %1$s</string>
+    <string name="import_newer">Файл создан более новой версией Robby. Обновите Robby и повторите импорт.</string>
+    <string name="import_not_settings">Это не файл экспорта Robby, или он повреждён.</string>
+    <string name="import_confirm_title">Заменить всё?</string>
+    <string name="import_confirm_text">Сценарии этого телефона (%1$d) заменятся сценариями из файла (%2$d), имя телефона-сервера — именем из файла. Срабатывания в очереди отменятся. %3$s придётся настроить заново: токены в файл не попадают.</string>
+    <string name="import_confirm">Заменить</string>
+    <string name="import_done_title">Импорт выполнен</string>
+    <string name="import_done_count">Сценариев: %1$d.</string>
+    <string name="import_done_disabled">Выключены, пока их не исправить (%1$d):</string>
+    <string name="import_done_connectors">Настройте заново: %1$s.</string>
+    <string name="import_open_applets">Активные апплеты</string>
+    <string name="dialog_ok">Понятно</string>
+
+    <!-- Server phone checks -->
+    <string name="check_fix">Исправить</string>
+    <string name="check_ok">в порядке</string>
+    <string name="check_problem">проблема</string>
+    <string name="check_permissions">Разрешения сценариев</string>
+    <string name="check_permissions_ok">Есть всё, что нужно включённым сценариям</string>
+    <string name="check_permissions_problem">Включённым сценариям не хватает разрешений: %1$s</string>
+    <string name="check_restricted">Настройки с ограниченным доступом</string>
+    <string name="check_restricted_ok">Не мешают</string>
+    <string name="check_restricted_problem">Android 15 не даёт разрешить SMS приложению, установленному из файла. Откройте «О приложении» → ⋮ → «Разрешить настройки с ограниченным доступом», вернитесь и нажмите «Исправить» у разрешений сценариев.</string>
+    <string name="check_battery">Оптимизация батареи</string>
+    <string name="check_battery_ok">Robby работает без ограничений</string>
+    <string name="check_battery_problem">Android может усыпить Robby и не дать ему проснуться на SMS или звонок. Разрешите работу без ограничений.</string>
+    <string name="check_hibernation">Приостановка неиспользуемых приложений</string>
+    <string name="check_hibernation_ok">Выключена для Robby</string>
+    <string name="check_hibernation_problem">Через несколько месяцев без открытия Android отберёт у Robby разрешения. Выключите «Приостанавливать работу, если не используется».</string>
+    <string name="check_notifications">Уведомления</string>
+    <string name="check_notifications_ok">Включены</string>
+    <string name="check_notifications_problem">Выключены: не видно, что Robby работает и что коннектор сломан, уведомления сценариев не показываются.</string>
+    <string name="check_exact_alarms">Будильники и напоминания</string>
+    <string name="check_exact_alarms_ok">Разрешены: расписание и повторы отправки приходят вовремя</string>
+    <string name="check_exact_alarms_problem">Не разрешены: расписание и повторы отправки могут опаздывать на несколько минут.</string>
+    <string name="check_data_saver">Экономия трафика</string>
+    <string name="check_data_saver_ok">Не мешает Robby</string>
+    <string name="check_data_saver_problem">Экономия трафика отключает Robby от сети в фоне, сообщения не уходят. Разрешите Robby неограниченный трафик или выключите экономию.</string>
+    <string name="check_screen_lock">Блокировка экрана</string>
+    <string name="check_screen_lock_ok">Нет: после перезагрузки Robby запустится сам</string>
+    <string name="check_screen_lock_problem">Стоит блокировка: после перезагрузки Robby молчит, пока телефон не разблокируют. На телефоне-сервере блокировку экрана лучше снять.</string>
 
     <!-- Scenario summary -->
     <string name="summary_if">если</string>

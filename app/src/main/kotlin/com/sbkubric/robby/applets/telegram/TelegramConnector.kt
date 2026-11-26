@@ -47,6 +47,9 @@ class TelegramConnector(
 
     fun markBroken(reason: String) = store.markBroken(reason)
 
+    /** «Не настроен»: the setup is forgotten, the wizard starts from the token. */
+    fun reset() = store.clear()
+
     /** Performs `telegram.send` with the stored settings. */
     val sendPerformer = ActionPerformer { params, _ ->
         val settings = store.settings.value

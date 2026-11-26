@@ -50,6 +50,13 @@ class TelegramSettingsStore(context: Context) {
         broken.value = null
     }
 
+    /** Forgets the token, bot and group (after an import): «Не настроен», and no longer «Сломан». */
+    fun clear() {
+        prefs.edit().clear().apply()
+        state.value = null
+        broken.value = null
+    }
+
     fun markBroken(reason: String) {
         prefs.edit { putString(BROKEN, reason) }
         broken.value = reason

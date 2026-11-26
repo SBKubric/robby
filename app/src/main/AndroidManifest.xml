@@ -17,6 +17,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- «Будильники и напоминания»: the schedule trigger rings on time; the user may deny it (then alarms are inexact). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!--
+        «Проверки телефона-сервера»: ask for the battery optimisation exemption right in a system dialog (research, issue #2).
+        Play restricts it to some app kinds; Robby is sideloaded and a phone-server is exactly what it is for.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- The SMS and call triggers need telephony, but the app must still install without it. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />

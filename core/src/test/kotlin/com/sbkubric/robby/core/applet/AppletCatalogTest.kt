@@ -42,6 +42,13 @@ class AppletCatalogTest {
     }
 
     @Test
+    fun `every variable of every trigger has its own sample value for the test button`() {
+        val variables = catalog.applets.flatMap { it.triggers }.flatMap { it.variables }
+        assertEquals(emptyList(), variables.filter { it.sample.isBlank() }.map { it.name })
+        assertEquals("900", catalog.trigger("sms.in")?.variables?.first { it.name == "sms.sender" }?.sample)
+    }
+
+    @Test
     fun `applets are offered by the kind of element they have`() {
         assertEquals(listOf("system", "battery", "sms", "call"), catalog.appletsWithTriggers().map { it.id })
         assertEquals(listOf("system", "battery", "call"), catalog.appletsWithConditions().map { it.id })

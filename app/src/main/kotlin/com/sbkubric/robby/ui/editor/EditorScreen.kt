@@ -65,7 +65,15 @@ import java.time.DayOfWeek
 fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
     val container = appContainer()
     val catalog = container.catalog
-    val vm = viewModel { EditorViewModel(container.scenarios, container.saveScenario, scenarioId) }
+    val vm = viewModel {
+        EditorViewModel(
+            container.scenarios,
+            container.saveScenario,
+            container.testScenario,
+            deliverNow = { container.delivery.kick() },
+            scenarioId = scenarioId,
+        )
+    }
     val draft = vm.draft
     val context = LocalContext.current
 
@@ -172,7 +180,7 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
             AddButton(stringResource(R.string.editor_add_condition)) { picker = PickerKind.CONDITION }
 
             SectionHeader(stringResource(R.string.editor_then), stringResource(R.string.editor_then_hint))
-            val variables = draft.trigger?.let { catalog.trigger(it.id) }?.variables.orEmpty() + CommonVariables.ALL
+            val variables = draft.trigger?.let { catalog.trigger(it.id) }?.variableNames.orEmpty() + CommonVariables.ALL
             draft.actions.forEachIndexed { index, action ->
                 val spec = catalog.action(action.id)
                 ElementCard(
@@ -197,6 +205,15 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                         label = { Text(cooldownLabel(minutes)) },
                     )
                 }
+            }
+
+            OutlinedButton(onClick = vm::test, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.editor_test)) }
+            if (vm.tested) {
+                Text(
+                    stringResource(R.string.editor_test_done),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             if (!vm.isNew) {

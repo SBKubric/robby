@@ -10,6 +10,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import androidx.room.migration.Migration
@@ -44,6 +45,10 @@ data class RunEntity(
     @ColumnInfo(defaultValue = "0") val attempts: Int = 0,
     val nextAttemptMillis: Long? = null,
     @ColumnInfo(defaultValue = "0") val late: Boolean = false,
+    /** The service's own wait (`retry_after`) while pending. */
+    val notBeforeMillis: Long? = null,
+    /** Started by the editor's «Тест». */
+    @ColumnInfo(defaultValue = "0") val test: Boolean = false,
 )
 
 @Dao
@@ -62,6 +67,19 @@ interface ScenarioDao {
 
     @Query("DELETE FROM scenarios WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("DELETE FROM scenarios")
+    suspend fun deleteAll()
+
+    @Insert
+    suspend fun insertAll(scenarios: List<ScenarioEntity>)
+
+    /** One transaction: the scenario list and the engine never see a mix of the old and the new. */
+    @Transaction
+    suspend fun replaceAll(scenarios: List<ScenarioEntity>) {
+        deleteAll()
+        insertAll(scenarios)
+    }
 }
 
 @Dao
@@ -81,7 +99,10 @@ interface RunDao {
     @Query("SELECT * FROM runs WHERE id IN (SELECT MAX(id) FROM runs GROUP BY scenarioId)")
     fun observeLastRuns(): Flow<List<RunEntity>>
 
-    @Query("SELECT * FROM runs WHERE scenarioId = :scenarioId AND status NOT IN (:excluded) ORDER BY timeMillis DESC, id DESC LIMIT 1")
+    @Query(
+        "SELECT * FROM runs WHERE scenarioId = :scenarioId AND status NOT IN (:excluded) AND test = 0 " +
+            "ORDER BY timeMillis DESC, id DESC LIMIT 1",
+    )
     suspend fun lastExecuted(scenarioId: String, excluded: List<String>): RunEntity?
 
     @Query(
@@ -92,7 +113,7 @@ interface RunDao {
 }
 
 // No exported schema yet: nothing has been released. Migrations keep debug installs working meanwhile.
-@Database(entities = [ScenarioEntity::class, RunEntity::class], version = 3, exportSchema = false)
+@Database(entities = [ScenarioEntity::class, RunEntity::class], version = 4, exportSchema = false)
 abstract class RobbyDatabase : RoomDatabase() {
     abstract fun scenarios(): ScenarioDao
     abstract fun runs(): RunDao
@@ -100,7 +121,7 @@ abstract class RobbyDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): RobbyDatabase =
             Room.databaseBuilder(context, RobbyDatabase::class.java, "robby.db")
-                .addMigrations(ADD_RUN_ERROR, ADD_RUN_DELIVERY)
+                .addMigrations(ADD_RUN_ERROR, ADD_RUN_DELIVERY, ADD_RUN_SERVICE_WAIT_AND_TEST)
                 .build()
 
         private val ADD_RUN_ERROR = object : Migration(1, 2) {
@@ -116,6 +137,14 @@ abstract class RobbyDatabase : RoomDatabase() {
                 connection.execSQL("ALTER TABLE runs ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
                 connection.execSQL("ALTER TABLE runs ADD COLUMN nextAttemptMillis INTEGER")
                 connection.execSQL("ALTER TABLE runs ADD COLUMN late INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Slice 7: the service's own wait of a pending run, and test runs. */
+        private val ADD_RUN_SERVICE_WAIT_AND_TEST = object : Migration(3, 4) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE runs ADD COLUMN notBeforeMillis INTEGER")
+                connection.execSQL("ALTER TABLE runs ADD COLUMN test INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

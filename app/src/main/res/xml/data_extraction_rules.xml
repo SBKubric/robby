@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Telegram token stays on this phone: neither cloud backup nor device transfer copies it. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="telegram_connector.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="telegram_connector.xml" />
+    </device-transfer>
+</data-extraction-rules>

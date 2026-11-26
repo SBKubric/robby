@@ -4,9 +4,10 @@ import com.sbkubric.robby.core.FakeActivityLog
 import com.sbkubric.robby.core.FakeScenarioRepository
 import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.log.Run
-import com.sbkubric.robby.core.log.RunError
+import com.sbkubric.robby.core.log.RunReason
 import com.sbkubric.robby.core.log.RunStatus
 import com.sbkubric.robby.core.scenario.Action
+import com.sbkubric.robby.core.scenario.Condition
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.Trigger
 import kotlinx.coroutines.delay
@@ -142,7 +143,7 @@ class HandleEventTest {
         engine(smsScenario(), performers = emptyMap()).invoke(sms("900"))
 
         assertEquals(
-            listOf(Run("bank", "SMS от банка", now, RunStatus.FAILED, "telegram.send", RunError.NO_PERFORMER)),
+            listOf(Run("bank", "SMS от банка", now, RunStatus.FAILED, "telegram.send", RunReason.NO_PERFORMER)),
             log.runs.value,
         )
     }
@@ -163,10 +164,10 @@ class HandleEventTest {
         assertTrue(System.nanoTime() - started < 5_000_000_000, "the engine must not wait for the slow action")
         assertEquals(
             mapOf(
-                "slow" to Triple(RunStatus.FAILED, null, RunError.TIMED_OUT),
+                "slow" to Triple(RunStatus.FAILED, null, RunReason.TIMED_OUT),
                 "fast" to Triple(RunStatus.DONE, "Доставлено", null),
             ),
-            log.runs.value.associate { it.scenarioId to Triple(it.status, it.message, it.error) },
+            log.runs.value.associate { it.scenarioId to Triple(it.status, it.message, it.reason) },
         )
         assertEquals(runs.toSet(), log.runs.value.toSet())
     }
@@ -199,5 +200,98 @@ class HandleEventTest {
         assertEquals(2000, log.runs.value.size)
         assertEquals("SMS от банка", log.runs.value.first().scenarioName)
         assertEquals(false, log.runs.value.any { it.scenarioName == "Старый" })
+    }
+
+    // The fixed clock is Thursday 2026-11-26, 14:02 in Moscow.
+    private val thursday = Condition("system.days", mapOf("days" to "4"))
+    private val night = Condition("system.window", mapOf("from" to "22:00", "to" to "08:00"))
+
+    private fun ran(minutesAgo: Long, status: RunStatus, scenarioId: String = "bank") =
+        Run(scenarioId, "SMS от банка", now.minusSeconds(minutesAgo * 60), status, null)
+
+    @Test
+    fun `scenario runs when all its conditions are met`() = runBlocking {
+        engine(smsScenario().copy(conditions = listOf(thursday, Condition("system.window", mapOf("from" to "09:00", "to" to "18:00")))))
+            .invoke(sms("900"))
+
+        assertEquals(listOf("SMS от 900: Код 1234"), sent)
+        assertEquals(listOf(RunStatus.DONE), log.runs.value.map { it.status })
+    }
+
+    @Test
+    fun `condition not met skips the run and the log says which condition`() = runBlocking {
+        val runs = engine(smsScenario().copy(conditions = listOf(thursday, night))).invoke(sms("900"))
+
+        assertEquals(emptyList<String>(), sent)
+        val skipped = Run("bank", "SMS от банка", now, RunStatus.SKIPPED, "system.window", RunReason.CONDITION_NOT_MET)
+        assertEquals(listOf(skipped), runs)
+        assertEquals(listOf(skipped), log.runs.value)
+    }
+
+    @Test
+    fun `condition missing from the catalog is not met`() = runBlocking {
+        engine(smsScenario().copy(conditions = listOf(Condition("battery.level")))).invoke(sms("900"))
+
+        assertEquals(listOf("battery.level" to RunReason.CONDITION_NOT_MET), log.runs.value.map { it.message to it.reason })
+    }
+
+    @Test
+    fun `event within the pause after the last run is skipped as a pause`() = runBlocking {
+        log.runs.value = listOf(ran(minutesAgo = 10, RunStatus.DONE))
+
+        engine(smsScenario().copy(cooldownMinutes = 15)).invoke(sms("900"))
+
+        assertEquals(emptyList<String>(), sent)
+        assertEquals(
+            Run("bank", "SMS от банка", now, RunStatus.SKIPPED, null, RunReason.COOLDOWN),
+            log.runs.value.first(),
+        )
+    }
+
+    @Test
+    fun `event after the pause has passed runs`() = runBlocking {
+        log.runs.value = listOf(ran(minutesAgo = 15, RunStatus.DONE))
+
+        engine(smsScenario().copy(cooldownMinutes = 15)).invoke(sms("900"))
+
+        assertEquals(1, sent.size)
+    }
+
+    @Test
+    fun `pause counts from the last executed run, failed ones too, but not from skipped ones`() = runBlocking {
+        log.runs.value = listOf(ran(minutesAgo = 5, RunStatus.SKIPPED), ran(minutesAgo = 20, RunStatus.DONE))
+        engine(smsScenario().copy(cooldownMinutes = 15)).invoke(sms("900"))
+        assertEquals(1, sent.size)
+
+        log.runs.value = listOf(ran(minutesAgo = 5, RunStatus.FAILED))
+        engine(smsScenario().copy(cooldownMinutes = 15)).invoke(sms("900"))
+        assertEquals(RunReason.COOLDOWN, log.runs.value.first().reason)
+    }
+
+    @Test
+    fun `pause is per scenario and absent by default`() = runBlocking {
+        log.runs.value = listOf(ran(minutesAgo = 1, RunStatus.DONE, scenarioId = "other"), ran(minutesAgo = 1, RunStatus.DONE, scenarioId = "free"))
+
+        engine(smsScenario(id = "bank").copy(cooldownMinutes = 15), smsScenario(id = "free")).invoke(sms("900"))
+
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun `conditions are checked before the pause`() = runBlocking {
+        log.runs.value = listOf(ran(minutesAgo = 5, RunStatus.DONE))
+
+        engine(smsScenario().copy(conditions = listOf(night), cooldownMinutes = 15)).invoke(sms("900"))
+
+        assertEquals(RunReason.CONDITION_NOT_MET, log.runs.value.first().reason)
+    }
+
+    @Test
+    fun `server phone start runs boot scenarios`() = runBlocking {
+        val boot = smsScenario(message = "{device} включился").copy(trigger = Trigger("system.boot"))
+
+        engine(boot).invoke(Event("system.boot", emptyMap(), now))
+
+        assertEquals(listOf("Pixel дома включился"), sent)
     }
 }

@@ -2,6 +2,7 @@ package com.sbkubric.robby.core
 
 import com.sbkubric.robby.core.log.ActivityLog
 import com.sbkubric.robby.core.log.Run
+import com.sbkubric.robby.core.log.RunStatus
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.ScenarioRepository
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +27,8 @@ class FakeActivityLog : ActivityLog {
     override fun observeRecent(): Flow<List<Run>> = runs
     override fun observeLastRuns(): Flow<Map<String, Run>> =
         runs.map { list -> list.groupBy { it.scenarioId }.mapValues { (_, r) -> r.first() } }
+    override suspend fun lastExecuted(scenarioId: String): Run? =
+        runs.value.filter { it.scenarioId == scenarioId && it.status != RunStatus.SKIPPED }.maxByOrNull { it.time }
     override suspend fun prune(olderThan: Instant, keepNewest: Int) {
         runs.value = runs.value.filter { !it.time.isBefore(olderThan) }.take(keepNewest)
     }

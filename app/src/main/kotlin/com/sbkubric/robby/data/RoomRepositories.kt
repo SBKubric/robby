@@ -2,7 +2,7 @@ package com.sbkubric.robby.data
 
 import com.sbkubric.robby.core.log.ActivityLog
 import com.sbkubric.robby.core.log.Run
-import com.sbkubric.robby.core.log.RunError
+import com.sbkubric.robby.core.log.RunReason
 import com.sbkubric.robby.core.log.RunStatus
 import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.ScenarioFormat
@@ -31,7 +31,7 @@ class RoomActivityLog(private val dao: RunDao) : ActivityLog {
             timeMillis = run.time.toEpochMilli(),
             status = run.status.name,
             message = run.message,
-            error = run.error?.name,
+            error = run.reason?.name,
         ),
     )
 
@@ -39,6 +39,9 @@ class RoomActivityLog(private val dao: RunDao) : ActivityLog {
 
     override fun observeLastRuns(): Flow<Map<String, Run>> =
         dao.observeLastRuns().map { rows -> rows.associate { it.scenarioId to it.toRun() } }
+
+    override suspend fun lastExecuted(scenarioId: String): Run? =
+        dao.lastExecuted(scenarioId, skipped = RunStatus.SKIPPED.name)?.toRun()
 
     override suspend fun prune(olderThan: Instant, keepNewest: Int) = dao.prune(olderThan.toEpochMilli(), keepNewest)
 
@@ -48,7 +51,7 @@ class RoomActivityLog(private val dao: RunDao) : ActivityLog {
         time = Instant.ofEpochMilli(timeMillis),
         status = runCatching { RunStatus.valueOf(status) }.getOrDefault(RunStatus.FAILED),
         message = message,
-        error = error?.let { name -> RunError.entries.firstOrNull { it.name == name } },
+        reason = error?.let { name -> RunReason.entries.firstOrNull { it.name == name } },
     )
 
     private companion object {

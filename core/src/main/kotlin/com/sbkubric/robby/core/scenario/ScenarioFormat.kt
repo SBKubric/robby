@@ -10,9 +10,12 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * The one JSON format of a scenario: a flat document with `schemaVersion`,
  * used by the database now and by the export file later.
+ *
+ * Versions: 1 — trigger and actions; 2 — adds `conditions` and `cooldownMinutes`.
+ * An older document reads with the defaults of the fields it lacks (no conditions, no pause).
  */
 object ScenarioFormat {
-    const val SCHEMA_VERSION = 1
+    const val SCHEMA_VERSION = 2
     private const val VERSION_KEY = "schemaVersion"
 
     private val json = Json {

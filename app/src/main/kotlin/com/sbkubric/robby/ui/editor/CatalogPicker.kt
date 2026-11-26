@@ -33,12 +33,14 @@ import com.sbkubric.robby.R
 import com.sbkubric.robby.core.applet.ActionSpec
 import com.sbkubric.robby.core.applet.Applet
 import com.sbkubric.robby.core.applet.AppletCatalog
+import com.sbkubric.robby.core.applet.ConditionSpec
 import com.sbkubric.robby.core.applet.TriggerSpec
 
-enum class PickerKind { TRIGGER, ACTION }
+enum class PickerKind { TRIGGER, CONDITION, ACTION }
 
 /**
- * «Сначала апплет»: tiles of the applets that offer this kind of element, then only that applet's elements.
+ * «Сначала апплет»: tiles of the applets that offer this kind of element (trigger, condition or action),
+ * then only that applet's elements.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,11 +48,16 @@ fun CatalogPicker(
     kind: PickerKind,
     catalog: AppletCatalog,
     onTrigger: (TriggerSpec) -> Unit,
+    onCondition: (ConditionSpec) -> Unit,
     onAction: (ActionSpec) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var appletId by rememberSaveable { mutableStateOf<String?>(null) }
-    val applets = if (kind == PickerKind.TRIGGER) catalog.appletsWithTriggers() else catalog.appletsWithActions()
+    val applets = when (kind) {
+        PickerKind.TRIGGER -> catalog.appletsWithTriggers()
+        PickerKind.CONDITION -> catalog.appletsWithConditions()
+        PickerKind.ACTION -> catalog.appletsWithActions()
+    }
     val applet = applets.firstOrNull { it.id == appletId }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -60,7 +67,13 @@ fun CatalogPicker(
         ) {
             if (applet == null) {
                 Text(
-                    stringResource(if (kind == PickerKind.TRIGGER) R.string.picker_trigger_title else R.string.picker_action_title),
+                    stringResource(
+                        when (kind) {
+                            PickerKind.TRIGGER -> R.string.picker_trigger_title
+                            PickerKind.CONDITION -> R.string.picker_condition_title
+                            PickerKind.ACTION -> R.string.picker_action_title
+                        },
+                    ),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 applets.chunked(2).forEach { row ->
@@ -92,6 +105,9 @@ fun CatalogPicker(
                             },
                         )
                     }
+                    PickerKind.CONDITION -> applet.conditions.forEach { spec ->
+                        ListItem(modifier = Modifier.clickable { onCondition(spec) }, headlineContent = { Text(spec.label) })
+                    }
                     PickerKind.ACTION -> applet.actions.forEach { spec ->
                         ListItem(modifier = Modifier.clickable { onAction(spec) }, headlineContent = { Text(spec.label) })
                     }
@@ -107,10 +123,10 @@ private fun AppletTile(applet: Applet, kind: PickerKind, modifier: Modifier, onC
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(applet.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                if (kind == PickerKind.TRIGGER) {
-                    stringResource(R.string.picker_triggers_count, applet.triggers.size)
-                } else {
-                    stringResource(R.string.picker_actions_count, applet.actions.size)
+                when (kind) {
+                    PickerKind.TRIGGER -> stringResource(R.string.picker_triggers_count, applet.triggers.size)
+                    PickerKind.CONDITION -> stringResource(R.string.picker_conditions_count, applet.conditions.size)
+                    PickerKind.ACTION -> stringResource(R.string.picker_actions_count, applet.actions.size)
                 },
                 style = MaterialTheme.typography.bodySmall,
             )

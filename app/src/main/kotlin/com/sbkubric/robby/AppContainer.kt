@@ -3,11 +3,15 @@ package com.sbkubric.robby
 import android.content.Context
 import android.util.Log
 import com.sbkubric.robby.applets.AndroidDeviceName
+import com.sbkubric.robby.applets.system.ScenarioNotifier
+import com.sbkubric.robby.applets.system.ScheduleAlarms
+import com.sbkubric.robby.applets.system.ServerPhoneName
 import com.sbkubric.robby.applets.telegram.TelegramApi
 import com.sbkubric.robby.applets.telegram.TelegramConnector
 import com.sbkubric.robby.applets.telegram.TelegramSettingsStore
 import com.sbkubric.robby.core.applet.AppletCatalog
 import com.sbkubric.robby.core.applets.BuiltInApplets
+import com.sbkubric.robby.core.applets.SystemApplet
 import com.sbkubric.robby.core.applets.TelegramApplet
 import com.sbkubric.robby.core.engine.HandleEvent
 import com.sbkubric.robby.core.log.ActivityLog
@@ -23,6 +27,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 /** Manual DI: the single place where the app's objects are built and wired. */
 class AppContainer(context: Context) {
@@ -35,7 +41,7 @@ class AppContainer(context: Context) {
         SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, e -> Log.e("Robby", "Background work failed", e) },
     )
 
-    val clock: Clock = Clock.systemDefaultZone()
+    val clock: Clock = SystemZoneClock
     val catalog: AppletCatalog = BuiltInApplets.catalog
 
     private val database = RobbyDatabase.create(appContext)
@@ -45,14 +51,31 @@ class AppContainer(context: Context) {
     val telegramApi = TelegramApi()
     val telegram = TelegramConnector(telegramApi, TelegramSettingsStore(appContext), appContext)
 
+    val serverPhoneName = ServerPhoneName(appContext, fallback = AndroidDeviceName(appContext))
+    val scheduleAlarms = ScheduleAlarms(appContext, scenarios, clock)
+    private val notifier = ScenarioNotifier(appContext)
+
     val saveScenario = SaveScenario(scenarios, ScenarioValidator(catalog))
 
     val handleEvent = HandleEvent(
         scenarios = scenarios,
         catalog = catalog,
-        performers = mapOf(TelegramApplet.SEND to telegram.sendPerformer),
+        performers = mapOf(
+            TelegramApplet.SEND to telegram.sendPerformer,
+            SystemApplet.NOTIFY to notifier.performer,
+        ),
         log = activityLog,
-        deviceName = AndroidDeviceName(appContext),
+        deviceName = serverPhoneName,
         clock = clock,
     )
+}
+
+/**
+ * The system clock in the phone's current time zone: unlike `Clock.systemDefaultZone()`, it follows a time zone change
+ * (Android resets the default zone of running processes), so `{now}`, conditions and schedules use the new zone.
+ */
+private object SystemZoneClock : Clock() {
+    override fun getZone(): ZoneId = ZoneId.systemDefault()
+    override fun withZone(zone: ZoneId): Clock = system(zone)
+    override fun instant(): Instant = Instant.now()
 }

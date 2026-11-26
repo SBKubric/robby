@@ -13,21 +13,36 @@ data class Run(
     val status: RunStatus,
     /**
      * What happened, e.g. where the message was delivered or why the action failed (text from the applet).
-     * For an [error] of the engine itself it is the detail, e.g. the action id.
+     * For a [reason] of the engine itself it is the detail, e.g. the action or condition id.
      */
     val message: String?,
-    /** A failure found by the engine itself; the UI turns it into text. `null` for applet results. */
-    val error: RunError? = null,
+    /** Why the engine itself failed or skipped the run; the UI turns it into text. `null` for applet results. */
+    val reason: RunReason? = null,
 )
 
-enum class RunStatus { DONE, FAILED }
+enum class RunStatus {
+    /** Every action was done. */
+    DONE,
 
-enum class RunError {
-    /** No performer is registered for the action ([Run.message] holds its id). */
+    /** An action failed, or the engine could not finish the run. */
+    FAILED,
+
+    /** The actions did not run: a condition was not met or the scenario was within its pause. */
+    SKIPPED,
+}
+
+enum class RunReason {
+    /** [RunStatus.FAILED]: no performer is registered for the action ([Run.message] holds its id). */
     NO_PERFORMER,
 
-    /** The actions did not finish within the time the caller allowed. */
+    /** [RunStatus.FAILED]: the actions did not finish within the time the caller allowed. */
     TIMED_OUT,
+
+    /** [RunStatus.SKIPPED]: a condition was not met ([Run.message] holds its id). */
+    CONDITION_NOT_MET,
+
+    /** [RunStatus.SKIPPED]: «пауза» — the scenario's last executed run was less than its cooldown ago. */
+    COOLDOWN,
 }
 
 /** Port: the history of runs, newest first. */
@@ -37,6 +52,9 @@ interface ActivityLog {
 
     /** The newest run of each scenario, by scenario id. */
     fun observeLastRuns(): Flow<Map<String, Run>>
+
+    /** The newest run of the scenario whose actions ran, i.e. not [RunStatus.SKIPPED]: the pause counts from it. */
+    suspend fun lastExecuted(scenarioId: String): Run?
 
     /** Deletes runs older than [olderThan] and all but the [keepNewest] newest ones. */
     suspend fun prune(olderThan: Instant, keepNewest: Int)

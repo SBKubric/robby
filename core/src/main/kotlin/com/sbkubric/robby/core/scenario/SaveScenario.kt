@@ -21,7 +21,9 @@ class SaveScenario(
             name = draft.name.trim(),
             enabled = draft.enabled,
             trigger = checkNotNull(draft.trigger),
+            conditions = draft.conditions,
             actions = draft.actions,
+            cooldownMinutes = draft.cooldownMinutes,
         )
         repository.save(scenario)
         return Result.Saved(scenario)

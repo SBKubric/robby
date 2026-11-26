@@ -25,6 +25,7 @@ import com.sbkubric.robby.core.applet.Applet
 import com.sbkubric.robby.core.applet.ConnectorState
 import com.sbkubric.robby.core.applets.TelegramApplet
 import com.sbkubric.robby.ui.BackTopBar
+import com.sbkubric.robby.ui.BadgeTone
 import com.sbkubric.robby.ui.StatusBadge
 import com.sbkubric.robby.ui.appContainer
 import com.sbkubric.robby.ui.connectorStateLabel
@@ -67,7 +68,7 @@ private fun ConnectorCard(applet: Applet, state: ConnectorState, details: String
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(applet.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 Text(stringResource(R.string.applets_connector), style = MaterialTheme.typography.labelMedium)
-                StatusBadge(connectorStateLabel(state), good = state == ConnectorState.WORKING)
+                StatusBadge(connectorStateLabel(state), if (state == ConnectorState.WORKING) BadgeTone.GOOD else BadgeTone.BAD)
             }
             Text(
                 stringResource(R.string.applets_actions, applet.actions.joinToString(", ") { it.label }),

@@ -50,13 +50,14 @@ class AppletCatalog(val applets: List<Applet>) {
         )
     }
 
-    /** The non-template params that are filled, as the user reads them (weekdays as «по будням»). */
+    /** The non-template params that are filled, as the user reads them (weekdays as «по будням», `20 %`). */
     private fun filledValues(specs: List<ParamSpec>, params: Map<String, String>): List<String> =
         specs.filter { !it.isTemplate }.mapNotNull { spec ->
             val value = params[spec.key]?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
             when (spec.kind) {
                 ParamKind.WEEKDAYS -> ParamValues.weekdays(value)?.let(ParamValues::describeWeekdays) ?: value
                 ParamKind.TIME -> ParamValues.time(value)?.let(ParamValues::time) ?: value
+                ParamKind.NUMBER -> spec.unit?.let { "$value $it" } ?: value
                 ParamKind.TEXT, ParamKind.TEMPLATE -> value
             }
         }

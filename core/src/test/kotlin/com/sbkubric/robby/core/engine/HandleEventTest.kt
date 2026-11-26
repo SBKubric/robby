@@ -2,6 +2,7 @@ package com.sbkubric.robby.core.engine
 
 import com.sbkubric.robby.core.FakeActivityLog
 import com.sbkubric.robby.core.FakeScenarioRepository
+import com.sbkubric.robby.core.applet.BatteryState
 import com.sbkubric.robby.core.applets.BuiltInApplets
 import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunReason
@@ -24,6 +25,7 @@ class HandleEventTest {
 
     private val now = Instant.parse("2026-11-26T11:02:00Z")
     private val log = FakeActivityLog()
+    private var battery: BatteryState? = BatteryState(level = 64, temperature = 31.5, plugged = true)
     private val sent = mutableListOf<String>()
     private val telegram = ActionPerformer { params ->
         sent += params.getValue("text")
@@ -51,6 +53,7 @@ class HandleEventTest {
             performers = performers,
             log = log,
             deviceName = { "Pixel дома" },
+            battery = { battery },
             clock = Clock.fixed(now, ZoneId.of("Europe/Moscow")),
         )
 
@@ -293,5 +296,49 @@ class HandleEventTest {
         engine(boot).invoke(Event("system.boot", emptyMap(), now))
 
         assertEquals(listOf("Pixel дома включился"), sent)
+    }
+
+    private fun batteryScenario(id: String, trigger: Trigger, vararg conditions: Condition) = smsScenario(
+        id = id,
+        message = "Заряд {battery.level} %, {battery.temperature} °C",
+    ).copy(trigger = trigger, conditions = conditions.toList())
+
+    @Test
+    fun `battery event runs only the scenarios with the threshold it crossed`() = runBlocking {
+        val runs = engine(
+            batteryScenario("20", Trigger("battery.below", mapOf("level" to "20"))),
+            batteryScenario("50", Trigger("battery.below", mapOf("level" to "50"))),
+        ).invoke(Event("battery.below", mapOf("battery.level" to "19", "battery.temperature" to "30,5", "battery.threshold" to "20"), now))
+
+        assertEquals(listOf("20"), runs.map { it.scenarioId })
+        assertEquals(listOf("Заряд 19 %, 30,5 °C"), sent)
+    }
+
+    @Test
+    fun `battery conditions see the battery at the time of the event`() = runBlocking {
+        val engine = engine(
+            smsScenario(id = "plugged").copy(conditions = listOf(Condition("battery.charging"))),
+            smsScenario(id = "charged").copy(conditions = listOf(Condition("battery.level_above", mapOf("level" to "50")))),
+        )
+
+        battery = BatteryState(level = 40, temperature = 30.0, plugged = false)
+        val runs = engine(sms("900"))
+
+        assertEquals(
+            listOf("plugged" to "battery.charging", "charged" to "battery.level_above"),
+            runs.map { it.scenarioId to it.message },
+        )
+        assertEquals(setOf(RunStatus.SKIPPED), runs.map { it.status }.toSet())
+    }
+
+    @Test
+    fun `battery conditions are not met when the battery is unknown, other conditions still work`() = runBlocking {
+        battery = null
+        val runs = engine(
+            smsScenario(id = "battery").copy(conditions = listOf(Condition("battery.not_charging"))),
+            smsScenario(id = "time").copy(conditions = listOf(thursday)),
+        ).invoke(sms("900"))
+
+        assertEquals(listOf("battery" to RunStatus.SKIPPED, "time" to RunStatus.DONE), runs.map { it.scenarioId to it.status })
     }
 }

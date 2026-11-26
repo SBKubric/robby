@@ -55,11 +55,23 @@ fun interface ConditionCheck {
 
 /**
  * What conditions can see of the server phone, taken once per event.
- * Later slices add fields read through their own ports (e.g. battery level and charging for the Battery applet).
+ * Later slices add fields read through their own ports.
  */
 data class ServerPhoneState(
     /** The time of the event in the phone's time zone. */
     val time: ZonedDateTime,
+    /** The battery at the time of the event; `null` if the phone did not report it. */
+    val battery: BatteryState? = null,
+)
+
+/** One reading of the server phone's battery. */
+data class BatteryState(
+    /** Charge, 0–100 %. */
+    val level: Int,
+    /** In °C. */
+    val temperature: Double,
+    /** On a charger, also when full and no longer charging. */
+    val plugged: Boolean,
 )
 
 /** An action an applet offers, e.g. `telegram.send`. */
@@ -78,9 +90,17 @@ data class ParamSpec(
     val filter: Filter? = null,
     /** The value a newly added element starts with. */
     val default: String = "",
+    /** For a [ParamKind.NUMBER]: the numbers it accepts. */
+    val range: IntRange? = null,
+    /** For a [ParamKind.NUMBER]: what it counts, e.g. `%`, shown after the value. */
+    val unit: String? = null,
 ) {
     /** A template text: may contain variables, which are rendered before the action runs. */
     val isTemplate: Boolean get() = kind == ParamKind.TEMPLATE
+
+    /** False if the text cannot be read as the param's kind or is out of its [range]. */
+    fun isValid(value: String): Boolean =
+        kind.isValid(value) && (range == null || ParamValues.number(value)?.let { it in range } == true)
 }
 
 /** What a param's text holds, which decides how it is edited and checked. */
@@ -96,6 +116,9 @@ enum class ParamKind {
 
     /** A non-empty set of weekdays, ISO numbers `1,2,3` for Mon, Tue, Wed ([ParamValues.weekdays]). */
     WEEKDAYS,
+
+    /** A whole number, e.g. a threshold of `20` % ([ParamValues.number]). */
+    NUMBER,
     ;
 
     /** False if the text cannot be read as this kind; text kinds accept anything. */
@@ -103,6 +126,7 @@ enum class ParamKind {
         TEXT, TEMPLATE -> true
         TIME -> ParamValues.time(value) != null
         WEEKDAYS -> ParamValues.weekdays(value) != null
+        NUMBER -> ParamValues.number(value) != null
     }
 }
 
@@ -128,6 +152,12 @@ sealed interface Filter {
     data class AtTime(override val variable: String) : Filter {
         override fun passes(wanted: String, actual: String) =
             ParamValues.time(wanted)?.let { it == ParamValues.time(actual) } ?: false
+    }
+
+    /** The event crossed the param's threshold: both are the same whole number. */
+    data class AtThreshold(override val variable: String) : Filter {
+        override fun passes(wanted: String, actual: String) =
+            ParamValues.number(wanted)?.let { it == ParamValues.number(actual) } ?: false
     }
 
     /** The event's weekday (an ISO number) is one of the param's weekdays. */

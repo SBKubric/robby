@@ -1,5 +1,6 @@
 package com.sbkubric.robby.core.engine
 
+import com.sbkubric.robby.core.applet.BatteryState
 import java.time.Instant
 
 /** Something a trigger reported: its id, the values of its variables (e.g. `sms.sender`) and when it happened. */
@@ -20,4 +21,9 @@ sealed interface ActionResult {
 /** Port: the server phone's name for `{device}`. */
 fun interface DeviceNameProvider {
     fun deviceName(): String
+}
+
+/** Port: the server phone's battery now, for conditions; `null` if the phone does not report it. */
+fun interface BatteryStateProvider {
+    fun batteryState(): BatteryState?
 }

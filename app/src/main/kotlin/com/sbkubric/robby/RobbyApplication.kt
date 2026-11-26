@@ -11,6 +11,7 @@ class RobbyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.scheduleAlarms.follow(container.appScope)
     }
 }
 

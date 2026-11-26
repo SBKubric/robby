@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -44,13 +46,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sbkubric.robby.R
 import com.sbkubric.robby.applets.AppletPermissions
 import com.sbkubric.robby.core.applet.AppletCatalog
+import com.sbkubric.robby.core.applet.ParamKind
 import com.sbkubric.robby.core.applet.ParamSpec
+import com.sbkubric.robby.core.applet.ParamValues
+import com.sbkubric.robby.core.applets.SystemApplet
+import com.sbkubric.robby.core.scenario.Scenario
 import com.sbkubric.robby.core.scenario.ScenarioProblem
 import com.sbkubric.robby.core.template.CommonVariables
 import com.sbkubric.robby.ui.BackTopBar
 import com.sbkubric.robby.ui.appContainer
+import com.sbkubric.robby.ui.cooldownLabel
+import java.time.DayOfWeek
 
-/** One form «Когда / То»; conditions («Если») and Pause come in slice 3. */
+/** One form «Когда / Если / То» and the scenario's «Пауза». */
 @Composable
 fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
     val container = appContainer()
@@ -70,6 +78,9 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
     }
     val missingPermissions = remember(draft.trigger?.id, permissionCheck) {
         draft.trigger?.id?.let { AppletPermissions.missing(context, it) }.orEmpty()
+    }
+    val inexactSchedule = remember(draft.trigger?.id, permissionCheck) {
+        draft.trigger?.id == SystemApplet.SCHEDULE && !container.scheduleAlarms.canBeExact()
     }
     val requestPermissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         permissionCheck++
@@ -129,8 +140,31 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                             },
                         )
                     }
+                    if (inexactSchedule) {
+                        ExactAlarmHint {
+                            context.startActivity(
+                                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", context.packageName, null)),
+                            )
+                        }
+                    }
                 }
             }
+
+            SectionHeader(stringResource(R.string.editor_if), stringResource(R.string.editor_if_hint))
+            draft.conditions.forEachIndexed { index, condition ->
+                val spec = catalog.condition(condition.id)
+                ElementCard(
+                    appletName = catalog.appletOf(condition.id)?.name,
+                    label = spec?.label ?: stringResource(R.string.editor_unknown_element, condition.id),
+                    buttonText = stringResource(R.string.editor_remove),
+                    onButton = { vm.removeCondition(index) },
+                ) {
+                    spec?.params.orEmpty().forEach { param ->
+                        ParamField(param, condition.params[param.key].orEmpty(), emptyList()) { vm.setConditionParam(index, param.key, it) }
+                    }
+                }
+            }
+            AddButton(stringResource(R.string.editor_add_condition)) { picker = PickerKind.CONDITION }
 
             SectionHeader(stringResource(R.string.editor_then), stringResource(R.string.editor_then_hint))
             val variables = draft.trigger?.let { catalog.trigger(it.id) }?.variables.orEmpty() + CommonVariables.ALL
@@ -148,6 +182,17 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                 }
             }
             AddButton(stringResource(R.string.editor_add_action)) { picker = PickerKind.ACTION }
+
+            SectionHeader(stringResource(R.string.editor_pause), stringResource(R.string.editor_pause_hint))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Scenario.COOLDOWN_CHOICES.forEach { minutes ->
+                    FilterChip(
+                        selected = draft.cooldownMinutes == minutes,
+                        onClick = { vm.setCooldown(minutes) },
+                        label = { Text(cooldownLabel(minutes)) },
+                    )
+                }
+            }
 
             if (!vm.isNew) {
                 TextButton(
@@ -167,6 +212,10 @@ fun EditorScreen(scenarioId: String?, onBack: () -> Unit) {
                 picker = null
                 val missing = AppletPermissions.missing(context, spec.id)
                 if (missing.isNotEmpty()) requestPermissions.launch(missing.toTypedArray())
+            },
+            onCondition = { spec ->
+                vm.addCondition(spec)
+                picker = null
             },
             onAction = { spec ->
                 vm.addAction(spec)
@@ -231,16 +280,56 @@ private fun ElementCard(
 
 @Composable
 private fun ParamField(param: ParamSpec, value: String, variables: List<String>, onChange: (String) -> Unit) {
-    if (param.isTemplate) {
-        TemplateField(param.label, value, variables, onChange)
-    } else {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            label = { Text(param.label) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+    when (param.kind) {
+        ParamKind.TEMPLATE -> TemplateField(param.label, value, variables, onChange)
+        ParamKind.WEEKDAYS -> WeekdaysField(param.label, value, onChange)
+        ParamKind.TEXT, ParamKind.TIME -> {
+            val invalid = !param.kind.isValid(value)
+            OutlinedTextField(
+                value = value,
+                onValueChange = onChange,
+                label = { Text(param.label) },
+                singleLine = true,
+                isError = invalid,
+                supportingText = if (invalid) {
+                    { Text(stringResource(R.string.editor_time_invalid)) }
+                } else {
+                    null
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** A chip per weekday, Monday first; the value is the set of chosen days ([ParamValues.weekdays]). */
+@Composable
+private fun WeekdaysField(label: String, value: String, onChange: (String) -> Unit) {
+    val days = ParamValues.weekdays(value).orEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DayOfWeek.entries.forEach { day ->
+                FilterChip(
+                    selected = day in days,
+                    onClick = { onChange(ParamValues.weekdays(if (day in days) days - day else days + day)) },
+                    label = { Text(ParamValues.shortName(day).replaceFirstChar { it.uppercase() }) },
+                )
+            }
+        }
+        if (days.isEmpty()) {
+            Text(stringResource(R.string.editor_days_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun ExactAlarmHint(onAllow: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.exact_alarm_hint), style = MaterialTheme.typography.bodyMedium)
+            FilledTonalButton(onClick = onAllow) { Text(stringResource(R.string.permission_request)) }
+        }
     }
 }
 
@@ -270,6 +359,16 @@ private fun Problems(problems: List<ScenarioProblem>, catalog: AppletCatalog, tr
                     ScenarioProblem.EmptyText -> stringResource(R.string.problem_empty_text)
                     is ScenarioProblem.UnknownElements ->
                         stringResource(R.string.problem_unknown, problem.ids.joinToString(", "))
+                    is ScenarioProblem.InvalidParams -> stringResource(
+                        R.string.problem_invalid,
+                        problem.params.map { ref ->
+                            val element = catalog.trigger(ref.elementId)?.let { it.label to it.params }
+                                ?: catalog.condition(ref.elementId)?.let { it.label to it.params }
+                                ?: catalog.action(ref.elementId)?.let { it.label to it.params }
+                            val param = element?.second?.firstOrNull { it.key == ref.key }?.label ?: ref.key
+                            stringResource(R.string.problem_invalid_param, param, element?.first ?: ref.elementId)
+                        }.joinToString(", "),
+                    )
                     is ScenarioProblem.UnavailableVariables -> stringResource(
                         R.string.problem_variables,
                         problem.variables.joinToString(", ") { "{$it}" },

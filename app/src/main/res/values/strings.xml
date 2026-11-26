@@ -18,6 +18,9 @@
     <string name="run_failed">ошибка</string>
     <string name="run_error_no_performer">Действие %1$s недоступно в этой версии Robby</string>
     <string name="run_error_timed_out">Не успело за отведённое время</string>
+    <string name="run_skipped">пропущено</string>
+    <string name="run_skipped_condition">Не выполнено условие «%1$s»</string>
+    <string name="run_skipped_cooldown">Пауза: сценарий недавно срабатывал</string>
 
     <!-- Editor -->
     <string name="editor_title_new">Новый сценарий</string>
@@ -27,6 +30,13 @@
     <string name="editor_name">Название</string>
     <string name="editor_when">Когда</string>
     <string name="editor_when_hint">один триггер</string>
+    <string name="editor_if">Если</string>
+    <string name="editor_if_hint">условия, все сразу</string>
+    <string name="editor_add_condition">+ Условие</string>
+    <string name="editor_pause">Пауза</string>
+    <string name="editor_pause_hint">повторные срабатывания пропускаются</string>
+    <string name="editor_time_invalid">Время в виде ЧЧ:ММ, например 09:00</string>
+    <string name="editor_days_empty">Выберите хотя бы один день</string>
     <string name="editor_then">То</string>
     <string name="editor_then_hint">действия по порядку</string>
     <string name="editor_pick_trigger">+ Выбрать триггер</string>
@@ -45,17 +55,22 @@
     <string name="problem_no_actions">Добавьте хотя бы одно действие.</string>
     <string name="problem_empty_text">У действия пустой текст.</string>
     <string name="problem_unknown">Этих элементов нет в приложении: %1$s. Уберите их.</string>
+    <string name="problem_invalid">Проверьте поля: %1$s.</string>
+    <string name="problem_invalid_param">«%1$s» в «%2$s»</string>
     <string name="problem_variables">Переменные %1$s недоступны для триггера «%2$s». Уберите их или выберите другой триггер.</string>
 
     <string name="permission_hint">Без разрешения на получение SMS этот сценарий не сработает.</string>
     <string name="permission_hint_restricted">Если Android не даёт разрешить: «О приложении» → ⋮ → «Разрешить настройки с ограниченным доступом», затем повторите.</string>
+    <string name="exact_alarm_hint">Без разрешения «Будильники и напоминания» расписание может опаздывать на несколько минут.</string>
     <string name="permission_request">Разрешить</string>
     <string name="permission_open_settings">О приложении</string>
 
     <!-- Catalog picker -->
     <string name="picker_trigger_title">Какой апплет даст триггер?</string>
+    <string name="picker_condition_title">Какой апплет проверит условие?</string>
     <string name="picker_action_title">Какой апплет выполнит действие?</string>
     <string name="picker_triggers_count">Триггеров: %1$d</string>
+    <string name="picker_conditions_count">Условий: %1$d</string>
     <string name="picker_actions_count">Действий: %1$d</string>
     <string name="picker_connector">коннектор</string>
     <string name="picker_no_variables">без своих переменных</string>
@@ -66,6 +81,17 @@
     <string name="settings_log">Журнал активности</string>
     <string name="settings_log_summary">Последнее: %1$s · %2$s</string>
     <string name="settings_log_empty">Пока пусто</string>
+    <string name="settings_phone_name">Имя телефона-сервера</string>
+    <string name="settings_phone_name_default">%1$s (по умолчанию)</string>
+    <string name="phone_name_hint">Подставляется вместо {device}. Пусто — имя из настроек Android: %1$s</string>
+    <string name="phone_name_field">Имя</string>
+
+    <!-- Scenario summary -->
+    <string name="summary_if">если</string>
+    <string name="summary_pause">пауза %1$s</string>
+    <string name="pause_none">без паузы</string>
+    <string name="pause_minutes">%1$d мин</string>
+    <string name="pause_hours">%1$d ч</string>
 
     <!-- Connector states -->
     <string name="connector_not_configured">не настроен</string>
@@ -111,8 +137,14 @@
     <string name="telegram_network_error">Нет связи с Telegram: %1$s</string>
 
     <!-- Activity log -->
-    <string name="log_intro">Срабатывания за 30 дней, не больше 2000 записей. События, не прошедшие фильтр, сюда не пишутся.</string>
+    <string name="log_intro">Срабатывания за 30 дней, не больше 2000 записей, в том числе пропущенные условием или Паузой. События, не прошедшие фильтр, сюда не пишутся.</string>
     <string name="log_empty">Срабатываний пока не было.</string>
+
+    <!-- System applet -->
+    <string name="notify_channel_name">Уведомления сценариев</string>
+    <string name="notify_channel_description">Уведомления, которые показывают сценарии Robby</string>
+    <string name="notify_disabled">Уведомления Robby выключены в настройках Android</string>
+    <string name="notify_shown">Показано уведомление «%1$s»</string>
 
     <string name="service_channel_name">Работа Robby</string>
     <string name="service_channel_description">Постоянное уведомление: Robby работает в фоне и ждёт событий</string>

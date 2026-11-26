@@ -20,13 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sbkubric.robby.R
-import com.sbkubric.robby.core.log.RunStatus
 import com.sbkubric.robby.ui.BackTopBar
 import com.sbkubric.robby.ui.StatusBadge
 import com.sbkubric.robby.ui.appContainer
 import com.sbkubric.robby.ui.formatRunTime
 import com.sbkubric.robby.ui.runMessage
 import com.sbkubric.robby.ui.runStatusLabel
+import com.sbkubric.robby.ui.runTone
 
 /** «Журнал активности»: every run, newest first. */
 @Composable
@@ -49,9 +49,9 @@ fun ActivityLogScreen(onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(formatRunTime(run.time), style = MaterialTheme.typography.labelLarge)
                         Text(run.scenarioName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        StatusBadge(runStatusLabel(run.status), good = run.status == RunStatus.DONE)
+                        StatusBadge(runStatusLabel(run.status), runTone(run.status))
                     }
-                    runMessage(run)?.let {
+                    runMessage(run, container.catalog)?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

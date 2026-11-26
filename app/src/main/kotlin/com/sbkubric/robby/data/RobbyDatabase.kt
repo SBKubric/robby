@@ -32,7 +32,7 @@ data class RunEntity(
     val timeMillis: Long,
     val status: String,
     val message: String?,
-    /** `RunError` name, if the engine itself failed the run. */
+    /** `RunReason` name, if the engine itself failed or skipped the run (the column predates skipping). */
     val error: String? = null,
 )
 
@@ -64,6 +64,9 @@ interface RunDao {
 
     @Query("SELECT * FROM runs WHERE id IN (SELECT MAX(id) FROM runs GROUP BY scenarioId)")
     fun observeLastRuns(): Flow<List<RunEntity>>
+
+    @Query("SELECT * FROM runs WHERE scenarioId = :scenarioId AND status != :skipped ORDER BY timeMillis DESC, id DESC LIMIT 1")
+    suspend fun lastExecuted(scenarioId: String, skipped: String): RunEntity?
 
     @Query(
         "DELETE FROM runs WHERE timeMillis < :olderThanMillis " +

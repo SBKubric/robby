@@ -6,11 +6,16 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Call triggers: the call state broadcast; the caller's number comes in it only with READ_CALL_LOG too. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- Optional: the caller's contact name for {call.contact}. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- «Будильники и напоминания»: the schedule trigger rings on time; the user may deny it (then alarms are inexact). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- The SMS trigger needs telephony, but the app must still install without it. -->
+    <!-- The SMS and call triggers need telephony, but the app must still install without it. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
@@ -67,6 +72,18 @@
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+            The system's call state broadcast. Exported to be safe on every build: PHONE_STATE is a protected broadcast,
+            so no other app can send it, and the receiver ignores any other action.
+        -->
+        <receiver
+            android:name=".applets.call.CallReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
     </application>

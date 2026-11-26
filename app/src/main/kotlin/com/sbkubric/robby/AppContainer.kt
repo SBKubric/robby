@@ -5,6 +5,10 @@ import android.util.Log
 import com.sbkubric.robby.applets.AndroidDeviceName
 import com.sbkubric.robby.applets.battery.BatteryWatchPrefs
 import com.sbkubric.robby.applets.battery.StickyBatteryState
+import com.sbkubric.robby.applets.call.AndroidContactNames
+import com.sbkubric.robby.applets.call.CallReadings
+import com.sbkubric.robby.applets.call.CallWatchPrefs
+import com.sbkubric.robby.applets.call.TelephonyCallState
 import com.sbkubric.robby.applets.system.ScenarioNotifier
 import com.sbkubric.robby.applets.system.ScheduleAlarms
 import com.sbkubric.robby.applets.system.ServerPhoneName
@@ -14,6 +18,7 @@ import com.sbkubric.robby.applets.telegram.TelegramSettingsStore
 import com.sbkubric.robby.core.applet.AppletCatalog
 import com.sbkubric.robby.core.applets.BatteryWatch
 import com.sbkubric.robby.core.applets.BuiltInApplets
+import com.sbkubric.robby.core.applets.CallWatch
 import com.sbkubric.robby.core.applets.SystemApplet
 import com.sbkubric.robby.core.applets.TelegramApplet
 import com.sbkubric.robby.core.engine.HandleEvent
@@ -61,6 +66,12 @@ class AppContainer(context: Context) {
     /** Fed by the service's battery receiver; one per process, its memory in preferences. */
     val batteryWatch = BatteryWatch(scenarios, BatteryWatchPrefs(appContext))
 
+    /**
+     * Fed by the call state receiver, in order; the ringing call is kept in preferences, as each broadcast may start
+     * a new process.
+     */
+    val callReadings = CallReadings(CallWatch(CallWatchPrefs(appContext), AndroidContactNames(appContext)), appScope)
+
     val saveScenario = SaveScenario(scenarios, ScenarioValidator(catalog))
 
     val handleEvent = HandleEvent(
@@ -73,6 +84,7 @@ class AppContainer(context: Context) {
         log = activityLog,
         deviceName = serverPhoneName,
         battery = StickyBatteryState(appContext),
+        call = TelephonyCallState(appContext),
         clock = clock,
     )
 }

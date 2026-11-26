@@ -119,6 +119,7 @@ class SystemScheduleTest {
             log = FakeActivityLog(),
             deviceName = { "Pixel дома" },
             battery = { null },
+            call = { null },
             clock = Clock.fixed(fire.time, moscow),
         )
 

@@ -2,6 +2,8 @@ package com.sbkubric.robby.core
 
 import com.sbkubric.robby.core.applets.BatteryWatch
 import com.sbkubric.robby.core.applets.BatteryWatchStore
+import com.sbkubric.robby.core.applets.CallWatch
+import com.sbkubric.robby.core.applets.CallWatchStore
 import com.sbkubric.robby.core.log.ActivityLog
 import com.sbkubric.robby.core.log.Run
 import com.sbkubric.robby.core.log.RunStatus
@@ -42,4 +44,12 @@ class FakeBatteryWatchStore : BatteryWatchStore {
 
     override fun load() = memory
     override fun save(memory: BatteryWatch.Memory) { this.memory = memory }
+}
+
+/** Keeps the call watch's memory as the app's preferences would: it outlives a [CallWatch] instance. */
+class FakeCallWatchStore : CallWatchStore {
+    var ringing: CallWatch.Ringing? = null
+
+    override fun load() = ringing
+    override fun save(ringing: CallWatch.Ringing?) { this.ringing = ringing }
 }

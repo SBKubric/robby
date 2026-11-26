@@ -43,8 +43,8 @@ class AppletCatalogTest {
 
     @Test
     fun `applets are offered by the kind of element they have`() {
-        assertEquals(listOf("system", "battery", "sms"), catalog.appletsWithTriggers().map { it.id })
-        assertEquals(listOf("system", "battery"), catalog.appletsWithConditions().map { it.id })
+        assertEquals(listOf("system", "battery", "sms", "call"), catalog.appletsWithTriggers().map { it.id })
+        assertEquals(listOf("system", "battery", "call"), catalog.appletsWithConditions().map { it.id })
         assertEquals(listOf("system", "telegram"), catalog.appletsWithActions().map { it.id })
     }
 

@@ -200,6 +200,7 @@ class BatteryWatchTest {
             log = FakeActivityLog(),
             deviceName = { "Pixel дома" },
             battery = { null },
+            call = { null },
             clock = Clock.fixed(now, ZoneOffset.UTC),
         )
 

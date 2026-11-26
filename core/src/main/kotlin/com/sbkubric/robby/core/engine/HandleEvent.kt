@@ -35,6 +35,7 @@ class HandleEvent(
     private val log: ActivityLog,
     private val deviceName: DeviceNameProvider,
     private val battery: BatteryStateProvider,
+    private val call: CallStateProvider,
     private val clock: Clock,
 ) {
     /**
@@ -48,7 +49,7 @@ class HandleEvent(
             .filter { it.enabled && it.trigger.id == event.triggerId && trigger.matches(it.trigger.params, event.values) }
         if (matching.isEmpty()) return emptyList()
 
-        val state = ServerPhoneState(time = event.time.atZone(clock.zone), battery = battery.batteryState())
+        val state = ServerPhoneState(time = event.time.atZone(clock.zone), battery = battery.batteryState(), call = call.callState())
         val values = event.values + mapOf(
             CommonVariables.NOW to TIME_FORMAT.format(state.time),
             CommonVariables.DEVICE to deviceName.deviceName(),

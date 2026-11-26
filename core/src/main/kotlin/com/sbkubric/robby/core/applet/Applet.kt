@@ -30,7 +30,7 @@ data class TriggerSpec(
         this.params.all { spec ->
             val filter = spec.filter ?: return@all true
             val wanted = params[spec.key].orEmpty().trim()
-            wanted.isEmpty() || filter.passes(wanted, values[filter.variable].orEmpty())
+            wanted.isEmpty() || filter.variables.any { filter.passes(wanted, values[it].orEmpty()) }
         }
 }
 
@@ -62,6 +62,8 @@ data class ServerPhoneState(
     val time: ZonedDateTime,
     /** The battery at the time of the event; `null` if the phone did not report it. */
     val battery: BatteryState? = null,
+    /** The phone's calls at the time of the event; `null` if the phone did not report them (no permission). */
+    val call: CallState? = null,
 )
 
 /** One reading of the server phone's battery. */
@@ -73,6 +75,18 @@ data class BatteryState(
     /** On a charger, also when full and no longer charging. */
     val plugged: Boolean,
 )
+
+/** The phone's calls, as Android reports them. */
+enum class CallState {
+    /** No call. */
+    IDLE,
+
+    /** A call is ringing, or waiting while another call goes on. */
+    RINGING,
+
+    /** A call is dialling, going on or on hold, and none is ringing. */
+    OFFHOOK,
+}
 
 /** An action an applet offers, e.g. `telegram.send`. */
 data class ActionSpec(
@@ -134,10 +148,18 @@ enum class ParamKind {
 sealed interface Filter {
     val variable: String
 
+    /** The variables it checks: the event passes if one of them does. */
+    val variables: List<String> get() = listOf(variable)
+
     fun passes(wanted: String, actual: String): Boolean
 
-    /** Same value, ignoring case and the spaces, dashes and brackets of phone number formatting. */
-    data class Equals(override val variable: String) : Filter {
+    /**
+     * Same value, ignoring case and the spaces, dashes and brackets of phone number formatting;
+     * with [or], the value of either variable, e.g. a caller's number or contact name.
+     */
+    data class Equals(override val variable: String, val or: String? = null) : Filter {
+        override val variables get() = listOfNotNull(variable, or)
+
         override fun passes(wanted: String, actual: String) = normalize(wanted).equals(normalize(actual), ignoreCase = true)
 
         private fun normalize(value: String) = value.filterNot { it.isWhitespace() || it in "-()" }

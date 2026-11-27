@@ -14,7 +14,7 @@ HOOK=/scripts/deploy-hook.sh
 
 certbot certonly --standalone --non-interactive --agree-tos --no-eff-email \
   -m "$LE_EMAIL" -d "$SIP_DOMAIN" --keep-until-expiring $STAGING \
-  --key-type rsa --rsa-key-size 2048 --deploy-hook "$HOOK" || echo "[certbot] issuance failed; retrying in 1 hour" >&2
+  --key-type rsa --rsa-key-size 2048 --deploy-hook "sh $HOOK" || echo "[certbot] issuance failed; retrying in 1 hour" >&2
 
 # The certificate may already exist (container recreated): make sure Flexisip has it.
 if [ -s "/etc/letsencrypt/live/$SIP_DOMAIN/fullchain.pem" ]; then
@@ -27,11 +27,11 @@ fi
 while :; do
   sleep "$INTERVAL"
   if [ -s "/etc/letsencrypt/live/$SIP_DOMAIN/fullchain.pem" ]; then
-    certbot renew --non-interactive --deploy-hook "$HOOK" || echo "[certbot] renew failed" >&2
+    certbot renew --non-interactive --deploy-hook "sh $HOOK" || echo "[certbot] renew failed" >&2
     INTERVAL=12h
   else
     certbot certonly --standalone --non-interactive --agree-tos --no-eff-email \
-      -m "$LE_EMAIL" -d "$SIP_DOMAIN" $STAGING --key-type rsa --rsa-key-size 2048 --deploy-hook "$HOOK" \
+      -m "$LE_EMAIL" -d "$SIP_DOMAIN" $STAGING --key-type rsa --rsa-key-size 2048 --deploy-hook "sh $HOOK" \
       && RENEWED_LINEAGE="/etc/letsencrypt/live/$SIP_DOMAIN" sh "$HOOK" \
       || echo "[certbot] issuance failed; retrying in 1 hour" >&2
   fi

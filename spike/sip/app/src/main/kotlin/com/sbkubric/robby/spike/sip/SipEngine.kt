@@ -68,7 +68,7 @@ class SipEngine(private val context: Context, private val hooks: Hooks) {
     private var account: SpikeAccount? = null
     private var accountSettings: SpikeSettings? = null
     private var epSettings: SpikeSettings? = null
-    private var port: TonePort? = null
+    @Volatile private var port: TonePort? = null
     @Volatile private var call: SpikeCall? = null
     private var callCount = 0
 
@@ -137,6 +137,16 @@ class SipEngine(private val context: Context, private val hooks: Hooks) {
         }
         val t0 = SystemClock.elapsedRealtime()
         val e = SpikeEndpoint()
+        try {
+            startEndpoint(e, s, t0)
+        } catch (ex: Exception) {
+            try { e.libDestroy() } catch (_: Exception) {}
+            e.delete()
+            throw ex
+        }
+    }
+
+    private fun startEndpoint(e: SpikeEndpoint, s: SpikeSettings, t0: Long) {
         e.libCreate()
 
         val cfg = EpConfig()
@@ -267,11 +277,17 @@ class SipEngine(private val context: Context, private val hooks: Hooks) {
         mc.rtcpFbConfig.dontUseAvpf = !s.offerAvpf
 
         val a = SpikeAccount()
-        account = a
-        accountSettings = s
         regStatus = "регистрация…"
         SpikeLog.event("Аккаунт ${s.idUri()}: регистратор sip:$domain$tp, expires ${s.regExpiresSec} с")
-        a.create(ac, true)
+        try {
+            a.create(ac, true)
+        } catch (ex: Exception) {
+            a.delete()
+            regStatus = "аккаунт не создан"
+            throw ex
+        }
+        account = a
+        accountSettings = s
     }
 
     private fun destroy() {
@@ -304,12 +320,17 @@ class SipEngine(private val context: Context, private val hooks: Hooks) {
             return
         }
         val uri = s.targetUri()
-        require(uri.isNotEmpty()) { "не задан адрес офиса" }
+        try {
+            require(uri.isNotEmpty()) { "не задан адрес офиса" }
+            SpikeLog.event("▶ Звонок #${callCount + 1} ($origin) → $uri", pressedAt)
+            SpikeLog.event("Телефон: ${DeviceState.describe(context)}")
+            ensureAccount(s, forceRegister = false)
+        } catch (ex: Exception) {
+            hooks.onCallActive(false, s) // the service took the wake lock when the call was requested
+            throw ex
+        }
         callCount++
         callStartedAt = pressedAt
-        SpikeLog.event("▶ Звонок #$callCount ($origin) → $uri", pressedAt)
-        SpikeLog.event("Телефон: ${DeviceState.describe(context)}")
-        ensureAccount(s, forceRegister = false)
         val p = port!!
         p.tone = s.tone
         p.resetCounters(s.saveIncomingWav)
@@ -436,7 +457,7 @@ class SipEngine(private val context: Context, private val hooks: Hooks) {
             if (call == null || t == 0L) return
             when {
                 "ICE negotiation" in msg -> SpikeLog.event("ICE: ${msg.substringAfter("ICE negotiation").trim().let { "negotiation $it" }}", t)
-                "sending from" in msg && "candidate" in msg -> SpikeLog.event("ICE пара:${msg.substringAfter(":", msg).trimEnd()}", t)
+                "sending from" in msg && "candidate" in msg -> SpikeLog.event("ICE пара: Comp ${msg.substringAfter("Comp ", msg).trimEnd()}", t)
                 "SRTP" in msg && ("fail" in msg.lowercase() || "error" in msg.lowercase()) -> SpikeLog.event("SRTP: ${msg.trim()}", t)
             }
         }

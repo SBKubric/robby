@@ -1,0 +1,64 @@
+; Local verification only (spike #17). run-check.sh renders this into
+; generated/pjsip.conf with random passwords; the template holds none.
+
+[global]
+type=global
+user_agent=Robby local Asterisk
+endpoint_identifier_order=username
+
+; SIP over TLS only: no UDP/TCP transport at all.
+[transport-tls]
+type=transport
+protocol=tls
+bind=0.0.0.0:5061
+cert_file=/etc/asterisk/keys/server.crt
+priv_key_file=/etc/asterisk/keys/server.key
+method=tlsv1_2
+
+; Shared endpoint settings: TLS, mandatory SDES-SRTP, media anchored in
+; Asterisk, G.711 only, NAT-friendly (symmetric RTP, rport, contact rewrite).
+[endpoint-common](!)
+type=endpoint
+transport=transport-tls
+context=internal
+disallow=all
+allow=ulaw,alaw
+media_encryption=sdes
+media_encryption_optimistic=no
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+ice_support=yes
+dtmf_mode=rfc4733
+allow_subscribe=no
+
+[aor-common](!)
+type=aor
+max_contacts=1
+remove_existing=yes
+qualify_frequency=0
+
+[robby](endpoint-common)
+auth=robby-auth
+aors=robby
+
+[robby-auth]
+type=auth
+auth_type=digest
+username=robby
+password=@ROBBY_PASSWORD@
+
+[robby](aor-common)
+
+[office](endpoint-common)
+auth=office-auth
+aors=office
+
+[office-auth]
+type=auth
+auth_type=digest
+username=office
+password=@OFFICE_PASSWORD@
+
+[office](aor-common)

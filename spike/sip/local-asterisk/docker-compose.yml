@@ -1,0 +1,22 @@
+# Local verification of the spike's SIP stack (#17) against Asterisk.
+# NOT production: production is Flexisip on sip.sbkubric.com (infra/sip/).
+#
+# Image: andrius/asterisk, the most used community Asterisk image on Docker Hub
+# (Sangoma publishes no official one). Debian trixie build of Asterisk 22 LTS
+# with chan_pjsip and res_srtp; pinned by version tag and digest.
+name: robby-local-asterisk
+services:
+  asterisk:
+    image: andrius/asterisk:22.11.0_debian-trixie@sha256:d4aa1629e92b24e42c3b4555db8e3b2b54eca29e2c9ce7a56653d4257381e3c4
+    command: ["/usr/sbin/asterisk", "-f", "-n", "-vvv", "-T", "-U", "asterisk", "-p"]
+    ports:
+      - "5061:5061/tcp"                 # SIP over TLS
+      - "10000-10049:10000-10049/udp"   # RTP/SRTP (asterisk/rtp.conf)
+    volumes:
+      - ./generated/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./asterisk/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./asterisk/rtp.conf:/etc/asterisk/rtp.conf:ro
+      - ./asterisk/logger.conf:/etc/asterisk/logger.conf:ro
+      - ./asterisk/modules.conf:/etc/asterisk/modules.conf:ro
+      - ./generated/certs:/etc/asterisk/keys:ro
+    restart: "no"

@@ -1,0 +1,9 @@
+# Local-run override (test/run-check.sh): own data dirs, the SIP domain
+# resolves to this machine, no certbot.
+services:
+  flexisip:
+    extra_hosts:
+      - "${SIP_DOMAIN}:127.0.0.1"
+    volumes:
+      - ./test/generated/data/tls:/etc/flexisip/tls
+      - ./test/generated/data/log:/var/opt/belledonne-communications/log/flexisip

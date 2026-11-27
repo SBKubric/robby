@@ -1,0 +1,70 @@
+# SIP server for Robby's bridge channel: Flexisip on the owner's VPS.
+# Infrastructure only: the Robby app itself has no backend. See README.md.
+#
+#   cp .env.example .env    # fill in the domain, e-mail and two passwords
+#   docker compose up -d --build
+name: robby-sip
+
+services:
+  flexisip:
+    build: ./flexisip
+    image: robby-flexisip:2.6.2-1
+    # Host networking: the media relay needs a few hundred UDP ports and must
+    # see the VPS's own addresses; Docker port publishing would add a NAT hop.
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      SIP_DOMAIN: ${SIP_DOMAIN:?set SIP_DOMAIN in .env}
+      BIND_ADDRESS: ${BIND_ADDRESS:-0.0.0.0}
+      RTP_PORT_MIN: ${RTP_PORT_MIN:-40000}
+      RTP_PORT_MAX: ${RTP_PORT_MAX:-40199}
+      SIP_TCP_DIAG: ${SIP_TCP_DIAG:-0}
+      FLEXISIP_LOG_LEVEL: ${FLEXISIP_LOG_LEVEL:-message}
+      MEDIARELAY_PREVENT_LOOPS: ${MEDIARELAY_PREVENT_LOOPS:-true}
+      SELFSIGNED_EXTRA_SAN: ${SELFSIGNED_EXTRA_SAN:-}
+      FLEXISIP_EXTRA_ARGS: ${FLEXISIP_EXTRA_ARGS:-}
+    # Passwords as secret files, so they are not in `docker inspect`.
+    secrets:
+      - robby_password
+      - office_password
+    volumes:
+      - ./data/tls:/etc/flexisip/tls
+      - ./data/log:/var/opt/belledonne-communications/log/flexisip
+    tmpfs:
+      - /run/flexisip:mode=0750
+    healthcheck:
+      test: ["CMD-SHELL", "openssl s_client -connect 127.0.0.1:5061 -brief </dev/null >/dev/null 2>&1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  # Let's Encrypt (HTTP-01 on port 80) and renewal. Enabled by
+  # COMPOSE_PROFILES=letsencrypt in .env; left out for local runs.
+  certbot:
+    image: certbot/certbot:v5.10.0@sha256:c5698da859429ccee0fcc299a8000368198222d1f9e789ab6e388b491e8ce06d
+    profiles: ["letsencrypt"]
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/scripts/run.sh"]
+    environment:
+      SIP_DOMAIN: ${SIP_DOMAIN:?set SIP_DOMAIN in .env}
+      LE_EMAIL: ${LE_EMAIL:-}
+      LE_STAGING: ${LE_STAGING:-0}
+    ports:
+      - "80:80"
+    volumes:
+      - ./data/letsencrypt:/etc/letsencrypt
+      - ./data/tls:/tls
+      - ./certbot:/scripts:ro
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+
+secrets:
+  robby_password:
+    environment: ROBBY_PASSWORD
+  office_password:
+    environment: OFFICE_PASSWORD

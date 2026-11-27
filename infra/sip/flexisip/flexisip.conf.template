@@ -1,0 +1,117 @@
+## Flexisip 2.6 for the Robby bridge channel: one domain, two accounts.
+## The entrypoint renders this template into /run/flexisip/flexisip.conf;
+## @NAME@ placeholders come from the environment (see ../.env.example).
+## Anything not set here keeps Flexisip's default (`flexisip --dump-default all`).
+
+[global]
+default-servers=proxy
+log-level=@LOG_LEVEL@
+log-directory=/var/opt/belledonne-communications/log/flexisip
+# SIP over TLS on 5061. maddr is the bind address; the host part is the public
+# name that goes into Record-Route, so clients can verify the certificate.
+transports=sips:@SIP_DOMAIN@:5061;maddr=@BIND_ADDRESS@@EXTRA_TRANSPORTS@
+aliases=@SIP_DOMAIN@ localhost
+tls-certificates-file=/etc/flexisip/tls/cert.pem
+tls-certificates-private-key=/etc/flexisip/tls/key.pem
+# Certificates are re-read when they change on disk (Let's Encrypt renewal).
+tls-certificates-check-interval=1
+# CRLF keepalive on client connections: keeps the office's NAT/CGNAT
+# mapping of its TLS connection alive between re-registrations.
+keepalive-interval=120
+idle-timeout=3600
+
+# STUN for the clients' ICE (UDP 3478), so nothing depends on stun.linphone.org.
+[stun-server]
+enabled=true
+bind-address=@BIND_ADDRESS@
+port=3478
+
+# Rate limiting by Flexisip itself needs iptables inside the container and
+# NET_ADMIN on the host's firewall; it is done on the host instead
+# (firewall + fail2ban, see README).
+[module::DoSProtection]
+enabled=false
+
+[module::SanityChecker]
+enabled=true
+
+[module::NatHelper]
+enabled=true
+
+# Digest authentication against a static file of two accounts. Requests whose
+# From domain is not @SIP_DOMAIN@ are refused.
+[module::Authentication]
+enabled=true
+auth-domains=@SIP_DOMAIN@
+realm=@SIP_DOMAIN@
+available-algorithms=SHA-256 MD5
+db-implementation=file
+file-path=/run/flexisip/passwd
+cache-expire=300
+nonce-expires=3600
+
+# No calls to other domains: a request whose To is not @SIP_DOMAIN@ gets
+# "403 Domain forbidden" here instead of being forwarded (calls from other
+# domains are already refused by module::Authentication above).
+# The filter matters: only cross-domain requests may enter this module. It is
+# meant for the newer auth modules (OpenID Connect, trusted hosts) and answers
+# 500 to anything else authenticated by module::Authentication (Flexisip 2.6.2).
+[module::Authorization]
+enabled=true
+filter=to.uri.domain != '@SIP_DOMAIN@'
+auth-domains-mode=static
+auth-domains=@SIP_DOMAIN@
+
+[module::Registrar]
+enabled=true
+reg-domains=@SIP_DOMAIN@
+db-implementation=internal
+# The office may register a phone and a desktop client; Robby one device.
+max-contacts-by-aor=3
+max-contacts-per-registration=1
+min-expires=60
+max-expires=3600
+default-expires=600
+
+[module::Router]
+enabled=true
+call-fork-timeout=60
+
+# Media is relayed through this server: the office is behind CGNAT. SDES-SRTP
+# passes through untouched (the relay only rewrites addresses and ports).
+[module::MediaRelay]
+enabled=true
+sdp-port-range=@RTP_PORT_MIN@-@RTP_PORT_MAX@
+max-calls=4
+force-relay-for-non-ice-targets=true
+prevent-loops=@MEDIARELAY_PREVENT_LOOPS@
+inactivity-period=300
+
+[module::Forward]
+enabled=true
+default-transport=tls
+
+# Everything below is not used by the bridge channel.
+[module::Presence]
+enabled=false
+
+[module::RegEvent]
+enabled=false
+
+[module::B2bua]
+enabled=false
+
+[module::PushNotification]
+enabled=false
+
+[module::Transcoder]
+enabled=false
+
+[module::StatisticsCollector]
+enabled=false
+
+[module::Redirect]
+enabled=false
+
+[inter-domain-connections]
+accept-domain-registrations=false
